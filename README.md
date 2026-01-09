@@ -1,69 +1,116 @@
-# Tax Audit & Research Copilot
+# AI-Powered Audit Readiness Assistant
 
-By: Abdulla Ahmed Alaydaroos
+**Capstone Project by: Abdulla Ahmed Alaydaroos**
 
-This repository contains my capstone project - a tax audit support tool designed to assist tax auditors in researching UAE tax laws, regulations, and official guidance.
+An intelligent assistant that helps regulatory authorities assess whether organizations are ready for formal audits. The system identifies compliance gaps, highlights high-risk areas, and generates actionable recommendations.
+
+## What This System Does
+
+Regulatory authorities like the Abu Dhabi Accountability Authority (ADAA) must ensure organizations comply with accounting standards, reporting requirements, and internal control frameworks. This process traditionally relies on manual document reviews and can vary based on reviewer experience.
+
+This AI-powered assistant helps by:
+- **Accepting organizational inputs** - Entity profile, compliance self-assessment, prior audit findings
+- **Reviewing against requirements** - Compares inputs to IFRS, internal control frameworks, and regulatory guidelines
+- **Identifying compliance gaps** - Finds areas where requirements are not being met
+- **Prioritizing by risk** - Scores gaps as Critical, High, Medium, or Low
+- **Generating actionable reports** - Provides recommendations and evidence requirements
 
 ## Repository Structure
 
 ```
-├── v1_original/                    # Version 1 - Initial Implementation
-│   └── Problem_statement_1_*.ipynb # Original prototype notebook
+├── v2_enhanced/
+│   ├── audit_readiness_assistant.ipynb    # Main notebook (use this)
+│   ├── COLAB_CELLS_COPY_PASTE.md          # Copy-paste ready code cells
+│   ├── requirements.txt                    # Python dependencies
+│   └── .env.example                        # Environment variables template
 │
-├── v2_enhanced/                    # Version 2 - Final Enhanced Version
-│   ├── tax_audit_copilot_enhanced.ipynb    # Full enhanced notebook
-│   ├── COLAB_CELLS_COPY_PASTE.md           # Copy-paste ready code cells
-│   ├── ENHANCEMENT_PLAN.md                  # Development documentation
-│   ├── requirements.txt                     # Python dependencies
-│   └── .env.example                         # Environment variables template
+├── v1_original/                            # Earlier prototype (archived)
 │
-└── README.md                       # This file
+└── README.md                               # This file
 ```
-
-## Version Comparison
-
-### Version 1 (Original)
-- Basic RAG pipeline with FAISS vector store
-- Simple Gradio interface
-- Local document retrieval only
-
-### Version 2 (Enhanced - Final)
-- Structured state management with dataclasses
-- Context understanding with LLM classification
-- Hybrid retrieval (local FAISS + Tavily web search)
-- Trusted UAE tax source prioritization (FTA, MOF, official portals)
-- LLM-based relevance filtering
-- LangGraph workflow orchestration
-- Enhanced Gradio UI with multiple tabs
-- Iterative refinement support
-- Batch query processing
-- PDF and Markdown export
 
 ## How to Run
 
-### Option 1: Google Colab (Recommended)
-1. Open `v2_enhanced/tax_audit_copilot_enhanced.ipynb` in Google Colab
-2. Add API keys using Colab Secrets:
-   - `OPEN_AI_API` (required)
-   - `TAVILY_API_KEY` (optional, enables web search)
-3. Run all cells from top to bottom
-4. Upload your tax documents or use provided samples
+### Google Colab (Recommended)
 
-### Option 2: Local Environment
+1. Open `v2_enhanced/audit_readiness_assistant.ipynb` in Google Colab
+2. Add API keys using Colab Secrets sidebar:
+   - `OPEN_AI_API` (required) - OpenAI-compatible API key
+   - `TAVILY_API_KEY` (optional) - Enables web search for additional sources
+3. Run all cells from top to bottom
+4. Use the interactive interface to complete the assessment
+
+### Local Environment
+
 1. Clone this repository
-2. Copy `v2_enhanced/.env.example` to `.env` and fill in your keys
+2. Copy `v2_enhanced/.env.example` to `.env` and add your API keys
 3. Install dependencies: `pip install -r v2_enhanced/requirements.txt`
 4. Run the notebook with Jupyter
 
-## Features
+## System Workflow
 
-- **Document Processing**: Upload PDFs and Word documents for indexing
-- **Smart Retrieval**: Combines local knowledge base with live web search
-- **UAE Tax Focus**: Prioritizes official FTA and MOF sources
-- **Structured Output**: Generates audit-ready memorandums with citations
-- **Export Options**: Download results as PDF or Markdown
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  ENTITY INTAKE  │────▶│ STANDARDS LOAD  │────▶│  GAP ANALYSIS   │
+│                 │     │                 │     │                 │
+│ - Org details   │     │ - IFRS rules    │     │ - Compare       │
+│ - Sector/size   │     │ - ADAA guides   │     │ - Find gaps     │
+│ - Framework     │     │ - Controls      │     │ - Score risk    │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                                               │
+         ▼                                               ▼
+┌─────────────────┐                             ┌─────────────────┐
+│ COMPLIANCE INFO │                             │ READINESS REPORT│
+│                 │                             │                 │
+│ - Self-assess   │                             │ - Risk summary  │
+│ - Prior findings│                             │ - Gap details   │
+│ - Evidence      │                             │ - Actions needed│
+└─────────────────┘                             └─────────────────┘
+```
 
-## Notes
-- Demo documents are synthetic and used for illustration only
-- The tool supports professional judgment and improves efficiency
-- Web search requires Tavily API key (graceful fallback if not available)
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Entity Profile Input** | Captures organization type, size, sector, reporting framework |
+| **Compliance Self-Assessment** | Checklist-based input for 8 compliance areas |
+| **Prior Findings Input** | Records historical audit observations and their status |
+| **Gap Analysis Engine** | LLM-powered comparison against standards |
+| **Risk Prioritization** | Categorizes gaps as Critical, High, Medium, Low |
+| **Hybrid Retrieval** | Searches local documents + web for relevant standards |
+| **PDF Export** | Generates formal audit readiness report |
+
+## Compliance Areas Assessed
+
+1. Financial Reporting
+2. Internal Controls
+3. Asset Management
+4. Procurement & Contracts
+5. HR & Payroll
+6. IT Systems & Security
+7. Regulatory Compliance
+8. Governance & Oversight
+
+## Technology Stack
+
+- **LangChain/LangGraph** - LLM orchestration and workflow management
+- **FAISS** - Vector store for document retrieval
+- **Tavily** - Web search for additional regulatory sources
+- **Gradio** - Interactive web interface
+- **OpenAI API** - Language model (via compatible gateway)
+
+## Limitations
+
+- Demo documents are synthetic and for illustration purposes only
+- The system supports professional judgment but does not replace it
+- Results depend on quality and completeness of inputs provided
+- Web search requires Tavily API key (system works without it)
+
+## Notes for Instructors
+
+This project demonstrates:
+- Practical application of LLMs for compliance assessment
+- Structured workflow design using state graphs
+- Hybrid retrieval combining local and web sources
+- Risk-based prioritization of findings
+- User-friendly interface design for complex inputs

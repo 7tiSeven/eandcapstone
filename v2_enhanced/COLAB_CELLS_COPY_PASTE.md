@@ -1,14 +1,19 @@
-# Tax Audit Copilot - Capstone Project
+# Audit Readiness Assistant - Colab Cells
 
-**By: Abdulla Ahmed Alaydaroos**
+**Capstone Project by: Abdulla Ahmed Alaydaroos**
 
-This document contains all the code cells for my capstone project. Copy each cell into Google Colab in order.
+This document contains all code cells for the AI-Powered Audit Readiness Assistant. Copy each cell into Google Colab in order.
+
+**Before starting:** Add your API keys in Colab Secrets:
+- `OPEN_AI_API` (required)
+- `TAVILY_API_KEY` (optional - enables web search)
 
 ---
 
-## CELL 1 - Install Required Libraries
+## Cell 1 - Install Dependencies
 
 ```python
+# Cell 1 - Install Dependencies
 !pip -q install --upgrade \
   openai==1.66.3 \
   langchain>=1.0.0 \
@@ -24,113 +29,159 @@ This document contains all the code cells for my capstone project. Copy each cel
   gradio \
   pandas \
   reportlab
+
+print("All packages installed successfully.")
 ```
 
 ---
 
-## CELL 2 - Load API Keys
+## Cell 2 - Load API Credentials
 
 ```python
+# Cell 2 - Load API Credentials
 from google.colab import userdata
 
-# OpenAI API
 API_KEY = userdata.get("OPEN_AI_API")
 assert API_KEY, "Missing Colab Secret: OPEN_AI_API"
 BASE_URL = "https://aibe.mygreatlearning.com/openai/v1"
-print("✅ OpenAI key loaded and gateway set:", BASE_URL)
+print("API key loaded successfully.")
+print(f"Using endpoint: {BASE_URL}")
 
-# Tavily API (optional - works without it too)
 try:
     TAVILY_API_KEY = userdata.get("TAVILY_API_KEY")
     if TAVILY_API_KEY:
-        print("✅ Tavily API key loaded - web search enabled")
+        print("Tavily API key loaded - web search is enabled")
     else:
         TAVILY_API_KEY = None
-        print("⚠️ TAVILY_API_KEY not set - web search disabled (local docs only)")
+        print("Tavily API key not set - web search is disabled")
 except Exception:
     TAVILY_API_KEY = None
-    print("⚠️ Tavily API key not found - web search disabled (local docs only)")
+    print("Tavily API key not found - web search is disabled")
 ```
 
 ---
 
-## CELL 3 - Import Libraries
+## Cell 3 - Core Imports
 
 ```python
-import os, io, re, json, traceback
+# Cell 3 - Core Imports
+import os
+import io
+import re
+import json
+import traceback
+import uuid
 from typing import List, Dict, Any, Tuple, Optional
 from dataclasses import dataclass, field, asdict
 from datetime import date, datetime
 from enum import Enum
+from pathlib import Path
 
 from pypdf import PdfReader
 import docx
+import pandas as pd
+
+print("Core imports completed.")
 ```
 
 ---
 
-## CELL 4 - Define Data Structures
+## Cell 4 - Data Structures
 
 ```python
-class TaxArea(str, Enum):
-    VAT = "VAT"
-    CORPORATE_TAX = "Corporate Tax"
-    EXCISE_TAX = "Excise Tax"
-    TRANSFER_PRICING = "Transfer Pricing"
-    CUSTOMS = "Customs"
-    GENERAL = "General"
-    UNKNOWN = "Unknown"
+# Cell 4 - Data Structures
 
-class RequestType(str, Enum):
-    PENALTY_INQUIRY = "penalty_inquiry"
-    THRESHOLD_CHECK = "threshold_check"
-    COMPLIANCE_CHECKLIST = "compliance_checklist"
-    EXEMPTION_CHECK = "exemption_check"
-    FILING_DEADLINE = "filing_deadline"
-    GENERAL_RESEARCH = "general_research"
+class EntityType(str, Enum):
+    GOVERNMENT = "Government Entity"
+    SEMI_GOVERNMENT = "Semi-Government Entity"
+    PRIVATE = "Private Sector"
+    NON_PROFIT = "Non-Profit Organization"
 
-@dataclass
-class QueryState:
-    """Holds the user query and related options."""
-    query_text: str
-    tax_area: Optional[str] = None
-    request_type: Optional[str] = None
-    detail_level: str = "standard"
-    taxpayer_type: Optional[str] = None
-    sector: Optional[str] = None
-    as_of_date: str = field(default_factory=lambda: date.today().isoformat())
-    constraints: List[str] = field(default_factory=list)
-    enable_web_search: bool = True
-    previous_query_id: Optional[str] = None
+class EntitySize(str, Enum):
+    SMALL = "Small (< 50 employees)"
+    MEDIUM = "Medium (50-250 employees)"
+    LARGE = "Large (> 250 employees)"
 
-    def to_prompt_context(self) -> str:
-        parts = [f"Query: {self.query_text}"]
-        if self.tax_area and self.tax_area != "Auto-detect":
-            parts.append(f"Tax Area: {self.tax_area}")
-        if self.taxpayer_type and self.taxpayer_type != "Not specified":
-            parts.append(f"Taxpayer Type: {self.taxpayer_type}")
-        if self.sector and self.sector != "Not specified":
-            parts.append(f"Sector: {self.sector}")
-        if self.constraints:
-            parts.append(f"Focus Constraints: {', '.join(self.constraints)}")
-        if self.detail_level != "standard":
-            parts.append(f"Detail Level: {self.detail_level}")
-        return "\n".join(parts)
+class ComplianceArea(str, Enum):
+    FINANCIAL_REPORTING = "Financial Reporting"
+    INTERNAL_CONTROLS = "Internal Controls"
+    ASSET_MANAGEMENT = "Asset Management"
+    PROCUREMENT = "Procurement & Contracts"
+    HR_PAYROLL = "HR & Payroll"
+    IT_SYSTEMS = "IT Systems & Security"
+    REGULATORY = "Regulatory Compliance"
+    GOVERNANCE = "Governance & Oversight"
+
+class AssessmentStatus(str, Enum):
+    COMPLIANT = "Compliant"
+    PARTIAL = "Partially Compliant"
+    NON_COMPLIANT = "Non-Compliant"
+    NOT_ASSESSED = "Not Yet Assessed"
+    NOT_APPLICABLE = "Not Applicable"
+
+class RiskLevel(str, Enum):
+    CRITICAL = "Critical"
+    HIGH = "High"
+    MEDIUM = "Medium"
+    LOW = "Low"
 
 @dataclass
-class ContextAnalysis:
-    """Stores the classification results."""
-    tax_area: str
-    request_type: str
-    detail_level: str
-    key_entities: List[str]
-    search_keywords: List[str]
-    confidence: float = 0.0
+class EntityProfile:
+    entity_name: str
+    entity_type: str
+    sector: str
+    size_category: str
+    reporting_framework: str
+    fiscal_year_end: str
+    years_in_operation: int = 0
+    total_employees: int = 0
+    annual_budget: str = ""
+    prior_audit_rating: Optional[str] = None
+    notes: str = ""
+
+@dataclass
+class ComplianceIndicator:
+    area: str
+    status: str
+    has_documentation: bool = False
+    has_policies: bool = False
+    last_review_date: Optional[str] = None
+    notes: str = ""
+
+@dataclass
+class PriorFinding:
+    finding_id: str
+    category: str
+    severity: str
+    status: str
+    description: str
+    year_identified: int = 0
+    remediation_plan: str = ""
+    target_date: str = ""
+
+@dataclass
+class IdentifiedGap:
+    gap_id: str
+    area: str
+    description: str
+    risk_level: str
+    requirement_reference: str
+    recommendation: str
+    evidence_needed: List[str] = field(default_factory=list)
+
+@dataclass
+class AuditReadinessState:
+    entity: Optional[EntityProfile] = None
+    compliance_indicators: List[ComplianceIndicator] = field(default_factory=list)
+    prior_findings: List[PriorFinding] = field(default_factory=list)
+    identified_gaps: List[IdentifiedGap] = field(default_factory=list)
+    overall_risk_score: float = 0.0
+    readiness_level: str = "Not Assessed"
+    assessment_date: str = field(default_factory=lambda: date.today().isoformat())
 
 @dataclass
 class UnifiedSource:
-    """Represents a source from either local docs or web."""
-    provenance: str  # "local" or "web"
+    provenance: str
     source_id: str
     chunk_id: str
     content: str
@@ -138,16 +189,19 @@ class UnifiedSource:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_citation(self) -> str:
-        return f"[{self.provenance} | {self.source_id} | {self.chunk_id}]"
+        return f"[{self.provenance} | {self.source_id}]"
 
-print("✅ State objects defined: QueryState, ContextAnalysis, UnifiedSource")
+print("Data structures defined successfully.")
+print(f"Compliance areas: {[a.value for a in ComplianceArea]}")
 ```
 
 ---
 
-## CELL 5 - File Reading Functions
+## Cell 5 - File Reading Utilities
 
 ```python
+# Cell 5 - File Reading Utilities
+
 def read_file_bytes(filename: str, file_bytes: bytes) -> str:
     name = filename.lower()
 
@@ -168,20 +222,23 @@ def read_file_bytes(filename: str, file_bytes: bytes) -> str:
 
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+print("File reading utilities ready.")
 ```
 
 ---
 
-## CELL 6 - Create Sample Documents
+## Cell 6 - Demo Standards Documents
 
 ```python
+# Cell 6 - Demo Standards Documents
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
-from pathlib import Path
-import textwrap, zipfile
+import textwrap
+import zipfile
 
-out_dir = Path("tax_demo_docs")
+out_dir = Path("standards_docs")
 out_dir.mkdir(exist_ok=True)
 
 def make_pdf(path, title, sections):
@@ -194,7 +251,7 @@ def make_pdf(path, title, sections):
     y -= 0.4*inch
 
     c.setFont("Helvetica", 9)
-    c.drawString(x, y, f"SYNTHETIC DEMO DOCUMENT - {date.today()} (NOT REAL LAW)")
+    c.drawString(x, y, f"DEMO DOCUMENT - {date.today()} (For Educational Purposes)")
     y -= 0.3*inch
 
     for header, body in sections:
@@ -217,67 +274,164 @@ def make_pdf(path, title, sections):
 
     c.save()
 
-# Sample VAT Law
+# IFRS Standards
 make_pdf(
-    out_dir / "VAT_Law_Demo.pdf",
-    "Synthetic VAT Law (Demo)",
+    out_dir / "IFRS_Standards_Summary.pdf",
+    "IFRS Financial Reporting Standards (Summary)",
     [
-        ("Article 12 - Registration Threshold",
-         "Mandatory VAT registration applies if taxable supplies exceed AED 375,000 "
-         "in the preceding 12 months. Voluntary registration applies from AED 187,500."),
-        ("Article 22 - Filing Deadline",
-         "VAT returns must be submitted no later than the 28th day following the end "
-         "of the tax period."),
-        ("Article 59 - Late Filing Penalty",
-         "AED 1,000 for the first late return. AED 2,000 for repeated late returns "
-         "within 24 months."),
-        ("Article 60 - Late Payment Penalty",
-         "2% immediately after the due date, 4% after 7 days, plus 1% daily thereafter.")
+        ("IFRS 1 - First-time Adoption",
+         "Entities adopting IFRS for the first time must prepare an opening IFRS statement of "
+         "financial position. Full retrospective application is required with limited exemptions. "
+         "Comparative information for at least one prior period must be presented."),
+        ("IFRS 15 - Revenue Recognition",
+         "Revenue is recognized when control of goods or services transfers to the customer. "
+         "The five-step model requires: (1) identify contract, (2) identify performance obligations, "
+         "(3) determine transaction price, (4) allocate price, (5) recognize revenue."),
+        ("IFRS 16 - Leases",
+         "Lessees must recognize a right-of-use asset and lease liability for most leases. "
+         "Short-term leases (under 12 months) and low-value assets may be exempt. "
+         "Disclosure of lease obligations and maturity analysis is required."),
+        ("IAS 1 - Presentation of Financial Statements",
+         "Financial statements must include: statement of financial position, statement of profit or loss, "
+         "statement of changes in equity, statement of cash flows, and notes. "
+         "Fair presentation and compliance with IFRS must be explicitly stated.")
     ]
 )
 
-# Sample Regulation
+# Internal Control Framework
 make_pdf(
-    out_dir / "VAT_Regulation_Demo.pdf",
-    "Synthetic VAT Executive Regulation (Demo)",
+    out_dir / "Internal_Control_Framework.pdf",
+    "Internal Control Framework Requirements",
     [
-        ("Regulation 7 - Small Business Supplies",
-         "Persons below the mandatory registration threshold are not required to "
-         "charge VAT unless voluntarily registered."),
-        ("Regulation 52 - Penalty Mitigation",
-         "Penalties may be reduced if a justified excuse is accepted by the authority.")
+        ("Control Environment",
+         "The organization must establish a control environment that demonstrates commitment to integrity "
+         "and ethical values. Board oversight must be independent. Organizational structure must define "
+         "clear reporting lines and responsibilities."),
+        ("Risk Assessment",
+         "Management must identify and assess risks to achieving objectives. Risk assessment must consider "
+         "likelihood and impact. Fraud risk must be explicitly considered. Changes that could affect "
+         "internal control must be identified."),
+        ("Control Activities",
+         "Control activities must be designed to mitigate identified risks. Segregation of duties is required "
+         "for key processes. Authorization controls must be documented. IT general controls must protect "
+         "systems and data integrity."),
+        ("Information and Communication",
+         "Relevant information must be captured and communicated timely. Internal communication must "
+         "support internal control. External communication must be appropriate and controlled."),
+        ("Monitoring Activities",
+         "Ongoing monitoring must evaluate control effectiveness. Internal audit function should be "
+         "independent. Control deficiencies must be reported to appropriate levels. "
+         "Corrective actions must be tracked to completion.")
     ]
 )
 
-# Sample Guidance
+# ADAA Requirements
 make_pdf(
-    out_dir / "VAT_Guidance_Demo.pdf",
-    "Synthetic Tax Authority Guidance (Demo)",
+    out_dir / "ADAA_Audit_Requirements.pdf",
+    "ADAA Audit Requirements and Guidelines",
     [
-        ("GN-07 - Late Filing Review",
-         "Auditors should verify submission timestamps and assigned tax periods."),
-        ("GN-07 - Audit Checklist",
-         "Check filing history, payment confirmations, turnover evidence, and "
-         "mitigation requests.")
+        ("Documentation Requirements",
+         "Entities must maintain complete and accurate records of all financial transactions. "
+         "Supporting documentation must be retained for minimum 7 years. "
+         "Electronic records must have appropriate backup and recovery procedures."),
+        ("Financial Reporting Deadlines",
+         "Annual financial statements must be prepared within 3 months of fiscal year end. "
+         "Quarterly reports are required for government entities. "
+         "Audit reports must be submitted within 6 months of year end."),
+        ("Governance Requirements",
+         "Audit committee must meet at least quarterly. Internal audit function must report "
+         "directly to audit committee. Conflict of interest policies must be documented and enforced. "
+         "Whistleblower mechanisms must be established."),
+        ("Asset Management",
+         "Fixed asset register must be maintained and reconciled annually. Physical verification "
+         "of assets must be performed. Disposal procedures must be documented with proper approvals. "
+         "Impairment must be assessed annually."),
+        ("Procurement Standards",
+         "Procurement must follow competitive bidding for amounts exceeding thresholds. "
+         "Vendor evaluation criteria must be documented. Contract management procedures must be "
+         "in place. Purchase orders must precede goods receipt.")
     ]
 )
 
-# Create ZIP
-zip_path = out_dir / "tax_demo_docs.zip"
+# Audit Readiness Checklist
+make_pdf(
+    out_dir / "Audit_Readiness_Checklist.pdf",
+    "Audit Readiness Checklist",
+    [
+        ("Financial Reporting Readiness",
+         "Checklist: (1) Chart of accounts aligned with reporting framework, (2) Month-end close "
+         "procedures documented, (3) Journal entry approval process in place, (4) Reconciliations "
+         "performed and reviewed monthly, (5) Financial statement preparation timeline established."),
+        ("Documentation Completeness",
+         "Required documents: (1) Board meeting minutes, (2) Policy and procedure manuals, "
+         "(3) Organizational charts, (4) Delegation of authority matrix, (5) Risk register, "
+         "(6) Internal audit reports, (7) Prior audit reports and management responses."),
+        ("Control Evidence",
+         "Evidence to prepare: (1) Bank reconciliations with sign-off, (2) Accounts receivable aging, "
+         "(3) Inventory count documentation, (4) Fixed asset verification, (5) Payroll reconciliations, "
+         "(6) Access control reviews, (7) IT change management logs."),
+        ("Common Deficiencies",
+         "Watch for: (1) Missing segregation of duties, (2) Incomplete supporting documentation, "
+         "(3) Untimely reconciliations, (4) Lack of formal policies, (5) Inadequate IT controls, "
+         "(6) Unremediated prior findings, (7) Insufficient audit trail.")
+    ]
+)
+
+# HR and Payroll Standards
+make_pdf(
+    out_dir / "HR_Payroll_Standards.pdf",
+    "HR and Payroll Compliance Standards",
+    [
+        ("Payroll Processing Controls",
+         "Payroll changes must be authorized by HR and approved by department head. "
+         "Segregation required between payroll preparation, approval, and payment. "
+         "Payroll reconciliation to general ledger must be performed monthly."),
+        ("Employee Records",
+         "Personnel files must contain: employment contract, identification documents, "
+         "qualifications verification, performance evaluations, and disciplinary records. "
+         "Records must be secured with restricted access."),
+        ("Leave and Benefits",
+         "Leave balances must be tracked and reconciled. End-of-service benefits must be "
+         "calculated according to labor law. Accruals must be recorded in financial statements.")
+    ]
+)
+
+# IT Controls
+make_pdf(
+    out_dir / "IT_Control_Standards.pdf",
+    "IT General Controls Standards",
+    [
+        ("Access Controls",
+         "User access must follow least-privilege principle. Access reviews must be performed "
+         "quarterly. Terminated employee access must be revoked within 24 hours. "
+         "Privileged access must be logged and monitored."),
+        ("Change Management",
+         "All system changes must be authorized, tested, and approved before implementation. "
+         "Segregation required between development and production environments. "
+         "Emergency changes must be documented and ratified."),
+        ("Backup and Recovery",
+         "Backups must be performed daily for critical systems. Backup restoration must be "
+         "tested quarterly. Offsite backup storage is required. "
+         "Business continuity plan must be documented and tested annually.")
+    ]
+)
+
+zip_path = out_dir / "standards_docs.zip"
 with zipfile.ZipFile(zip_path, "w") as z:
     for f in out_dir.glob("*.pdf"):
         z.write(f, f.name)
 
-print("✅ Demo files created:")
-for f in out_dir.iterdir():
-    print(" -", f)
+print("Demo standards documents created:")
+for f in sorted(out_dir.glob("*.pdf")):
+    print(f"  - {f.name}")
 ```
 
 ---
 
-## CELL 7 - Set Up Vector Store
+## Cell 7 - Vector Store Setup
 
 ```python
+# Cell 7 - Vector Store Setup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -288,7 +442,7 @@ embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=900,
     chunk_overlap=150,
-    separators=["\n\n", "\n", "Article ", "Section ", ". ", " "]
+    separators=["\n\n", "\n", "Section ", "Article ", ". ", " "]
 )
 
 VECTORSTORE = None
@@ -300,22 +454,23 @@ def build_index(files: List[Dict[str, Any]]) -> str:
     for f in files:
         text = read_file_bytes(f["name"], f["bytes"])
         if len(text) < 50:
-            print(f"⚠️ Low text extracted from {f['name']} (len={len(text)})")
+            print(f"Warning: Low text extracted from {f['name']}")
         docs.append(Document(page_content=text, metadata={"source": f["name"]}))
 
     chunks = splitter.split_documents(docs)
     VECTORSTORE = FAISS.from_documents(chunks, embeddings)
 
-    return f"✅ Indexed {len(files)} file(s) into {len(chunks)} chunks."
+    return f"Indexed {len(files)} document(s) into {len(chunks)} searchable chunks."
 
-print("✅ Vector store ready")
+print("Vector store configured.")
 ```
 
 ---
 
-## CELL 8 - Initialize LLM
+## Cell 8 - LLM Setup
 
 ```python
+# Cell 8 - LLM Setup
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -326,7 +481,6 @@ llm = ChatOpenAI(
     base_url=BASE_URL
 )
 
-# Faster model for quick tasks
 llm_fast = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0.0,
@@ -334,75 +488,21 @@ llm_fast = ChatOpenAI(
     base_url=BASE_URL
 )
 
-print("✅ LLM clients initialized")
+print("Language model configured.")
 ```
 
 ---
 
-## CELL 9 - Query Classification
+## Cell 9 - Web Search Integration
 
 ```python
-CONTEXT_ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a tax query classifier for UAE tax regulations. Analyze the user's tax query and return a JSON object.
-
-Return ONLY valid JSON with these exact keys:
-- tax_area: one of ["VAT", "Corporate Tax", "Excise Tax", "Transfer Pricing", "Customs", "General", "Unknown"]
-- request_type: one of ["penalty_inquiry", "threshold_check", "compliance_checklist", "exemption_check", "filing_deadline", "general_research"]
-- detail_level: one of ["brief", "standard", "comprehensive"] based on query complexity
-- key_entities: array of specific items mentioned (amounts, dates, company types, etc.)
-- search_keywords: array of 3-5 optimal search terms for retrieval (include "UAE" context)
-- confidence: float 0.0-1.0 indicating classification confidence
-
-Return ONLY the JSON object. No markdown, no explanation."""),
-    ("human", "{query}")
-])
-
-def analyze_context(query_text: str, user_tax_area: str = None) -> ContextAnalysis:
-    """Classify the query before retrieval."""
-    try:
-        msg = CONTEXT_ANALYSIS_PROMPT.format_messages(query=query_text)
-        response = llm_fast.invoke(msg).content
-
-        data = json.loads(response.strip())
-
-        if user_tax_area and user_tax_area not in ["Auto-detect", "Auto", None, ""]:
-            data["tax_area"] = user_tax_area
-
-        return ContextAnalysis(
-            tax_area=data.get("tax_area", "Unknown"),
-            request_type=data.get("request_type", "general_research"),
-            detail_level=data.get("detail_level", "standard"),
-            key_entities=data.get("key_entities", []),
-            search_keywords=data.get("search_keywords", [query_text]),
-            confidence=data.get("confidence", 0.5)
-        )
-    except Exception as e:
-        print(f"⚠️ Context analysis fallback: {e}")
-        return ContextAnalysis(
-            tax_area=user_tax_area if user_tax_area and user_tax_area != "Auto-detect" else "Unknown",
-            request_type="general_research",
-            detail_level="standard",
-            key_entities=[],
-            search_keywords=[query_text],
-            confidence=0.0
-        )
-
-print("✅ Context understanding ready")
-```
-
----
-
-## CELL 10 - Web Search with Tavily
-
-```python
-# UAE official tax source domains
+# Cell 9 - Web Search Integration
 TRUSTED_DOMAINS = [
-    "tax.gov.ae",           # Federal Tax Authority
-    "mof.gov.ae",           # Ministry of Finance
-    "economy.ae",           # Ministry of Economy
-    "government.ae",        # UAE Government Portal
-    "u.ae",                 # Official UAE portal
-    "gcc-sg.org",           # GCC Secretariat
+    "adaa.gov.ae",
+    "government.ae",
+    "mof.gov.ae",
+    "ifrs.org",
+    "iasb.org",
 ]
 
 EXTENDED_TRUSTED = TRUSTED_DOMAINS + [
@@ -410,6 +510,7 @@ EXTENDED_TRUSTED = TRUSTED_DOMAINS + [
     "ey.com",
     "kpmg.com",
     "deloitte.com",
+    "aicpa.org",
 ]
 
 @dataclass
@@ -419,11 +520,9 @@ class WebSearchResult:
     title: str
     snippet: str
     score: float
-    published_date: Optional[str] = None
     is_official: bool = False
 
-def search_web_tavily(query: str, max_results: int = 5, context: ContextAnalysis = None) -> List[WebSearchResult]:
-    """Search the web for UAE tax info using Tavily."""
+def search_web_tavily(query: str, max_results: int = 5) -> List[WebSearchResult]:
     if not TAVILY_API_KEY:
         return []
 
@@ -431,9 +530,7 @@ def search_web_tavily(query: str, max_results: int = 5, context: ContextAnalysis
         from tavily import TavilyClient
         client = TavilyClient(api_key=TAVILY_API_KEY)
 
-        enhanced_query = f"UAE {query}"
-        if context and context.tax_area not in ["Unknown", "General"]:
-            enhanced_query = f"UAE {context.tax_area} {query}"
+        enhanced_query = f"audit compliance {query}"
 
         response = client.search(
             query=enhanced_query,
@@ -446,7 +543,6 @@ def search_web_tavily(query: str, max_results: int = 5, context: ContextAnalysis
         results = []
         for item in response.get("results", []):
             url = item.get("url", "")
-            domain = ""
             try:
                 from urllib.parse import urlparse
                 domain = urlparse(url).netloc.replace("www.", "")
@@ -470,7 +566,6 @@ def search_web_tavily(query: str, max_results: int = 5, context: ContextAnalysis
                 title=item.get("title", ""),
                 snippet=item.get("content", "")[:800],
                 score=adjusted_score,
-                published_date=item.get("published_date"),
                 is_official=is_official
             ))
 
@@ -478,19 +573,20 @@ def search_web_tavily(query: str, max_results: int = 5, context: ContextAnalysis
         return results[:max_results]
 
     except Exception as e:
-        print(f"⚠️ Web search error: {e}")
+        print(f"Web search error: {e}")
         return []
 
-print(f"✅ Web search configured. Tavily enabled: {TAVILY_API_KEY is not None}")
+print(f"Web search configured. Tavily enabled: {TAVILY_API_KEY is not None}")
 ```
 
 ---
 
-## CELL 11 - Hybrid Retrieval
+## Cell 10 - Retrieval Functions
 
 ```python
+# Cell 10 - Retrieval Functions
+
 def retrieve_local(query: str, k: int = 6) -> List[UnifiedSource]:
-    """Get results from local FAISS index."""
     global VECTORSTORE
     if VECTORSTORE is None:
         return []
@@ -508,9 +604,8 @@ def retrieve_local(query: str, k: int = 6) -> List[UnifiedSource]:
         ))
     return sources
 
-def retrieve_web(query: str, k: int = 3, context: ContextAnalysis = None) -> List[UnifiedSource]:
-    """Get results from web search."""
-    web_results = search_web_tavily(query, max_results=k, context=context)
+def retrieve_web(query: str, k: int = 3) -> List[UnifiedSource]:
+    web_results = search_web_tavily(query, max_results=k)
     sources = []
     for i, ws in enumerate(web_results, start=1):
         sources.append(UnifiedSource(
@@ -522,148 +617,139 @@ def retrieve_web(query: str, k: int = 3, context: ContextAnalysis = None) -> Lis
             metadata={
                 "url": ws.url,
                 "title": ws.title,
-                "published_date": ws.published_date,
                 "is_official": ws.is_official
             }
         ))
     return sources
 
-def retrieve_hybrid(
-    query: str,
-    context: ContextAnalysis,
-    k_local: int = 4,
-    k_web: int = 3,
-    enable_web: bool = True
-) -> List[UnifiedSource]:
-    """Combine local and web search results."""
+def retrieve_standards(query: str, enable_web: bool = True) -> List[UnifiedSource]:
     all_sources = []
 
-    local_sources = retrieve_local(query, k=k_local)
+    local_sources = retrieve_local(query, k=5)
     all_sources.extend(local_sources)
 
     if enable_web and TAVILY_API_KEY:
-        search_query = query
-        if context and context.search_keywords:
-            search_query = " ".join(context.search_keywords[:3])
-
-        web_sources = retrieve_web(search_query, k=k_web, context=context)
+        web_sources = retrieve_web(query, k=3)
         all_sources.extend(web_sources)
 
     return all_sources
 
 def format_sources_for_prompt(sources: List[UnifiedSource]) -> str:
-    """Format sources for the LLM prompt."""
     blocks = []
     for src in sources:
         header = src.to_citation()
-        extra = ""
-        if src.provenance == "web":
-            url = src.metadata.get("url", "")
-            extra = f" | URL: {url}" if url else ""
-        blocks.append(f"SOURCE {src.chunk_id} {header}{extra} (score={src.score:.3f}):\n{src.content}")
+        url = src.metadata.get("url", "")
+        extra = f" | URL: {url}" if url else ""
+        blocks.append(f"SOURCE {src.chunk_id} {header}{extra}:\n{src.content}")
     return "\n\n---\n\n".join(blocks)
 
-print("✅ Hybrid retrieval ready")
+print("Retrieval functions ready.")
 ```
 
 ---
 
-## CELL 12 - Relevance Filter
+## Cell 11 - Gap Analysis Prompts
 
 ```python
-RELEVANCE_FILTER_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a relevance filter for UAE tax research. Given a query and a source snippet, determine if the source is relevant.
+# Cell 11 - Gap Analysis Prompts
+
+GAP_ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", """You are an audit readiness assessment expert. Your task is to identify compliance gaps based on:
+1. The organization's profile and context
+2. Their self-assessment of compliance areas
+3. Any prior audit findings
+4. Relevant regulatory standards and requirements
+
+Analyze the inputs and identify specific compliance gaps. For each gap:
+- Describe the gap clearly
+- Reference the specific requirement not being met
+- Assess the risk level (Critical, High, Medium, Low)
+- Provide actionable recommendations
+- List evidence that should be prepared
 
 Return ONLY valid JSON with these keys:
-- relevant: boolean (true ONLY if source DIRECTLY addresses the query topic)
-- confidence: float 0.0-1.0
-- reason: brief explanation (max 20 words)
-- outdated: boolean (true if content appears outdated based on dates/references to old laws)
+- gaps: array of gap objects, each with:
+  - gap_id: string (e.g., "GAP-001")
+  - area: string (compliance area)
+  - description: string (clear description of the gap)
+  - risk_level: string (Critical, High, Medium, or Low)
+  - requirement_reference: string (which standard/requirement is not met)
+  - recommendation: string (what to do to address it)
+  - evidence_needed: array of strings (documents/evidence to prepare)
+- overall_risk_score: float 0.0-10.0 (10 being highest risk)
+- readiness_level: string ("Ready", "Partially Ready", "Not Ready", "Critical Gaps")
+- summary: string (brief overall assessment)
+- priority_actions: array of strings (top 3-5 actions to take)
 
-Be STRICT: only mark relevant if the source directly addresses the query. Generic tax info is NOT relevant.
-Return ONLY the JSON object."""),
-    ("human", "Query: {query}\n\nSource [{source_id}]:\n{content}")
+Be thorough but practical. Focus on material gaps that would concern auditors."""),
+    ("human", """ENTITY PROFILE:
+{entity_profile}
+
+COMPLIANCE SELF-ASSESSMENT:
+{compliance_indicators}
+
+PRIOR AUDIT FINDINGS:
+{prior_findings}
+
+RELEVANT STANDARDS AND REQUIREMENTS:
+{standards}
+
+Analyze the above and identify all compliance gaps. Return ONLY JSON.""")
 ])
 
-def filter_relevance(
-    query: str,
-    sources: List[UnifiedSource],
-    threshold: float = 0.5,
-    max_to_filter: int = 8
-) -> List[UnifiedSource]:
-    """Filter out irrelevant sources using LLM."""
-    if not sources:
-        return []
-
-    sources_to_filter = sources[:max_to_filter]
-    filtered = []
-
-    for src in sources_to_filter:
-        try:
-            msg = RELEVANCE_FILTER_PROMPT.format_messages(
-                query=query,
-                source_id=src.chunk_id,
-                content=src.content[:500]
-            )
-            response = llm_fast.invoke(msg).content
-            result = json.loads(response.strip())
-
-            is_relevant = result.get("relevant", False)
-            confidence = result.get("confidence", 0)
-            is_outdated = result.get("outdated", False)
-
-            if is_relevant and confidence >= threshold and not is_outdated:
-                src.metadata["relevance_confidence"] = confidence
-                src.metadata["relevance_reason"] = result.get("reason", "")
-                filtered.append(src)
-
-        except Exception as e:
-            # If filter fails, keep the source
-            filtered.append(src)
-
-    return filtered
-
-print("✅ Relevance filtering ready")
+print("Gap analysis prompts defined.")
 ```
 
 ---
 
-## CELL 13 - Answer Generation
+## Cell 12 - Gap Analysis Functions
 
 ```python
-MAIN_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are an AI-assisted tax research and audit support assistant for UAE tax regulations.
+# Cell 12 - Gap Analysis Functions
 
-Rules (STRICT):
-- Use ONLY the provided SOURCES. Do not use outside knowledge.
-- Every factual statement MUST have a citation like [local | filename | chunk_id] or [web | domain | chunk_id].
-- If sources are insufficient, say "INSUFFICIENT EVIDENCE" and list what is missing.
-- Prefer official sources (tax.gov.ae, mof.gov.ae) over commentary sources.
-- If web sources conflict with local documents, note the discrepancy.
+def format_entity_profile(entity: EntityProfile) -> str:
+    if entity is None:
+        return "No entity profile provided."
 
-Return ONLY valid JSON with these keys:
-- tax_area: string (the primary tax area addressed)
-- summary: string (plain-language summary of findings)
-- relevant_laws: array of objects {{ "law": string, "citation": string }}
-- key_provisions: array of objects {{ "point": string, "citation": string }}
-- obligations: array of objects {{ "item": string, "citation": string }}
-- exemptions: array of objects {{ "item": string, "citation": string }}
-- penalties: array of objects {{ "item": string, "citation": string }}
-- audit_checklist: array of strings
-- assumptions: array of strings
-- sources_used: array of strings (list all source citations used)
-- web_references: array of objects {{ "title": string, "url": string }} (for web sources only)"""),
+    return f"""- Entity Name: {entity.entity_name}
+- Entity Type: {entity.entity_type}
+- Sector: {entity.sector}
+- Size: {entity.size_category}
+- Reporting Framework: {entity.reporting_framework}
+- Fiscal Year End: {entity.fiscal_year_end}
+- Years in Operation: {entity.years_in_operation}
+- Total Employees: {entity.total_employees}
+- Annual Budget: {entity.annual_budget}
+- Prior Audit Rating: {entity.prior_audit_rating or 'Not available'}
+- Notes: {entity.notes or 'None'}"""
 
-    ("human", """AUDIT DATE (as-of): {as_of_date}
+def format_compliance_indicators(indicators: List[ComplianceIndicator]) -> str:
+    if not indicators:
+        return "No compliance self-assessment provided."
 
-QUERY CONTEXT:
-{query_context}
+    lines = []
+    for ind in indicators:
+        lines.append(f"""- {ind.area}:
+  Status: {ind.status}
+  Documentation: {'Yes' if ind.has_documentation else 'No'}
+  Policies: {'Yes' if ind.has_policies else 'No'}
+  Last Review: {ind.last_review_date or 'Not specified'}
+  Notes: {ind.notes or 'None'}""")
+    return "\n".join(lines)
 
-SOURCES:
-{sources}
+def format_prior_findings(findings: List[PriorFinding]) -> str:
+    if not findings:
+        return "No prior audit findings recorded."
 
-Return ONLY JSON. No markdown. No commentary.""")
-])
+    lines = []
+    for f in findings:
+        lines.append(f"""- {f.finding_id} ({f.category}):
+  Severity: {f.severity}
+  Status: {f.status}
+  Description: {f.description}
+  Year Identified: {f.year_identified or 'Not specified'}
+  Remediation Plan: {f.remediation_plan or 'None documented'}""")
+    return "\n".join(lines)
 
 def _safe_json_parse(text: str) -> Tuple[Dict[str, Any], str]:
     raw = (text or "").strip()
@@ -682,280 +768,363 @@ def _safe_json_parse(text: str) -> Tuple[Dict[str, Any], str]:
         except Exception:
             pass
 
-    return {"error": "Model returned non-JSON or invalid JSON.", "raw_output": raw[:6000]}, raw
+    return {"error": "Failed to parse LLM response", "raw_output": raw[:3000]}, raw
 
-def generate_answer(
-    query_state: QueryState,
-    context: ContextAnalysis,
-    sources: List[UnifiedSource]
+def analyze_gaps(
+    entity: EntityProfile,
+    indicators: List[ComplianceIndicator],
+    findings: List[PriorFinding],
+    enable_web: bool = True
 ) -> Dict[str, Any]:
-    """Generate the final answer from sources."""
 
-    if not sources:
-        return {
-            "error": "INSUFFICIENT EVIDENCE",
-            "summary": "No relevant sources found. Please upload relevant documents or try a different query.",
-            "tax_area": context.tax_area,
-            "sources_used": []
-        }
+    search_queries = []
+    if entity:
+        search_queries.append(f"{entity.reporting_framework} requirements {entity.entity_type}")
 
-    sources_text = format_sources_for_prompt(sources)
-    query_context = query_state.to_prompt_context()
+    for ind in indicators:
+        if ind.status in ["Partially Compliant", "Non-Compliant", "Not Yet Assessed"]:
+            search_queries.append(f"{ind.area} compliance requirements")
+
+    all_sources = []
+    for query in search_queries[:5]:
+        sources = retrieve_standards(query, enable_web=enable_web)
+        all_sources.extend(sources)
+
+    seen = set()
+    unique_sources = []
+    for s in all_sources:
+        key = (s.source_id, s.content[:100])
+        if key not in seen:
+            seen.add(key)
+            unique_sources.append(s)
+
+    standards_text = format_sources_for_prompt(unique_sources[:10])
+
+    if not standards_text:
+        standards_text = "No specific standards retrieved. Use general audit best practices."
 
     try:
-        msg = MAIN_PROMPT.format_messages(
-            query_context=query_context,
-            as_of_date=query_state.as_of_date,
-            sources=sources_text
+        msg = GAP_ANALYSIS_PROMPT.format_messages(
+            entity_profile=format_entity_profile(entity),
+            compliance_indicators=format_compliance_indicators(indicators),
+            prior_findings=format_prior_findings(findings),
+            standards=standards_text
         )
         response = llm.invoke(msg).content
-        parsed, raw = _safe_json_parse(response)
+        result, raw = _safe_json_parse(response)
 
-        parsed["_context_analysis"] = asdict(context)
-        parsed["_retrieved_sources"] = [
+        result["_sources"] = [
             {
-                "rank": i,
                 "provenance": s.provenance,
                 "source": s.source_id,
-                "chunk_id": s.chunk_id,
-                "score": s.score,
-                "preview": s.content[:350].replace("\n", " "),
-                "url": s.metadata.get("url", ""),
-                "is_official": s.metadata.get("is_official", False)
+                "preview": s.content[:200],
+                "url": s.metadata.get("url", "")
             }
-            for i, s in enumerate(sources, start=1)
+            for s in unique_sources[:10]
         ]
 
-        return parsed
+        return result
 
     except Exception as e:
-        return {"error": f"LLM call failed: {type(e).__name__}: {e}"}
+        return {
+            "error": f"Gap analysis failed: {type(e).__name__}: {e}",
+            "traceback": traceback.format_exc()[:2000]
+        }
 
-print("✅ Answer generation ready")
+print("Gap analysis functions ready.")
 ```
 
 ---
 
-## CELL 14 - LangGraph Workflow
+## Cell 13 - LangGraph Workflow
 
 ```python
+# Cell 13 - LangGraph Workflow
+
 try:
     from langgraph.graph import StateGraph, END
     from typing import TypedDict
     LANGGRAPH_AVAILABLE = True
-    print("✅ LangGraph imported")
 except ImportError:
     LANGGRAPH_AVAILABLE = False
-    print("⚠️ LangGraph not available, using fallback workflow")
+    print("LangGraph not available, using fallback workflow")
 
 if LANGGRAPH_AVAILABLE:
     class WorkflowState(TypedDict):
-        query_state: Dict
-        enable_filtering: bool
-        context_analysis: Optional[Dict]
-        raw_sources: List[Dict]
-        filtered_sources: List[Dict]
-        response: Dict
+        entity: Optional[Dict]
+        indicators: List[Dict]
+        findings: List[Dict]
+        enable_web: bool
+        retrieved_standards: List[Dict]
+        gap_analysis: Dict
         error: Optional[str]
 
-    def node_context_understanding(state: WorkflowState) -> WorkflowState:
+    def node_retrieve_standards(state: WorkflowState) -> WorkflowState:
         if state.get("error"):
             return state
-        qs = QueryState(**state["query_state"])
-        analysis = analyze_context(qs.query_text, qs.tax_area)
-        state["context_analysis"] = asdict(analysis)
+
+        entity = state.get("entity") or {}
+        indicators = state.get("indicators") or []
+
+        queries = []
+        if entity.get("reporting_framework"):
+            queries.append(f"{entity['reporting_framework']} financial reporting requirements")
+        if entity.get("entity_type"):
+            queries.append(f"{entity['entity_type']} audit requirements")
+
+        for ind in indicators:
+            if ind.get("status") in ["Partially Compliant", "Non-Compliant"]:
+                queries.append(f"{ind['area']} compliance standards")
+
+        all_sources = []
+        for q in queries[:5]:
+            sources = retrieve_standards(q, enable_web=state.get("enable_web", True))
+            all_sources.extend([asdict(s) for s in sources])
+
+        state["retrieved_standards"] = all_sources[:15]
         return state
 
-    def node_retrieval(state: WorkflowState) -> WorkflowState:
+    def node_analyze_gaps(state: WorkflowState) -> WorkflowState:
         if state.get("error"):
             return state
-        qs = QueryState(**state["query_state"])
-        context = ContextAnalysis(**state["context_analysis"])
-        sources = retrieve_hybrid(qs.query_text, context, enable_web=qs.enable_web_search)
-        state["raw_sources"] = [asdict(s) for s in sources]
-        return state
 
-    def node_filtering(state: WorkflowState) -> WorkflowState:
-        if state.get("error"):
-            return state
-        qs = QueryState(**state["query_state"])
-        sources = [UnifiedSource(**s) for s in state["raw_sources"]]
-        if state.get("enable_filtering", True) and sources:
-            filtered = filter_relevance(qs.query_text, sources)
-        else:
-            filtered = sources
-        state["filtered_sources"] = [asdict(s) for s in filtered]
-        return state
+        entity = EntityProfile(**state["entity"]) if state.get("entity") else None
+        indicators = [ComplianceIndicator(**i) for i in state.get("indicators", [])]
+        findings = [PriorFinding(**f) for f in state.get("findings", [])]
 
-    def node_summary(state: WorkflowState) -> WorkflowState:
-        if state.get("error"):
-            return state
-        qs = QueryState(**state["query_state"])
-        context = ContextAnalysis(**state["context_analysis"])
-        sources = [UnifiedSource(**s) for s in state["filtered_sources"]]
-        response = generate_answer(qs, context, sources)
-        state["response"] = response
+        result = analyze_gaps(entity, indicators, findings, enable_web=state.get("enable_web", True))
+        state["gap_analysis"] = result
         return state
 
     workflow = StateGraph(WorkflowState)
-    workflow.add_node("context_understanding", node_context_understanding)
-    workflow.add_node("retrieval", node_retrieval)
-    workflow.add_node("filtering", node_filtering)
-    workflow.add_node("summary", node_summary)
 
-    workflow.set_entry_point("context_understanding")
-    workflow.add_edge("context_understanding", "retrieval")
-    workflow.add_edge("retrieval", "filtering")
-    workflow.add_edge("filtering", "summary")
-    workflow.add_edge("summary", END)
+    workflow.add_node("retrieve_standards", node_retrieve_standards)
+    workflow.add_node("analyze_gaps", node_analyze_gaps)
 
-    tax_copilot_graph = workflow.compile()
-    print("✅ LangGraph workflow compiled")
+    workflow.set_entry_point("retrieve_standards")
+    workflow.add_edge("retrieve_standards", "analyze_gaps")
+    workflow.add_edge("analyze_gaps", END)
 
-def run_workflow(query_state: QueryState, enable_filtering: bool = True) -> Dict[str, Any]:
-    """Run the complete workflow."""
+    audit_workflow = workflow.compile()
+    print("LangGraph workflow compiled.")
+
+def run_assessment(
+    entity: EntityProfile,
+    indicators: List[ComplianceIndicator],
+    findings: List[PriorFinding],
+    enable_web: bool = True
+) -> Dict[str, Any]:
 
     if LANGGRAPH_AVAILABLE:
         initial_state = {
-            "query_state": asdict(query_state),
-            "enable_filtering": enable_filtering,
-            "context_analysis": None,
-            "raw_sources": [],
-            "filtered_sources": [],
-            "response": {},
+            "entity": asdict(entity) if entity else None,
+            "indicators": [asdict(i) for i in indicators],
+            "findings": [asdict(f) for f in findings],
+            "enable_web": enable_web,
+            "retrieved_standards": [],
+            "gap_analysis": {},
             "error": None
         }
-        final_state = tax_copilot_graph.invoke(initial_state)
-        return final_state.get("response", {"error": "Workflow failed"})
-    else:
-        # Fallback if LangGraph not available
-        context = analyze_context(query_state.query_text, query_state.tax_area)
-        sources = retrieve_hybrid(query_state.query_text, context, enable_web=query_state.enable_web_search)
-        if enable_filtering and sources:
-            sources = filter_relevance(query_state.query_text, sources)
-        return generate_answer(query_state, context, sources)
 
-print("✅ Workflow runner ready")
+        final_state = audit_workflow.invoke(initial_state)
+        return final_state.get("gap_analysis", {"error": "Workflow failed"})
+    else:
+        return analyze_gaps(entity, indicators, findings, enable_web)
+
+print("Assessment workflow ready.")
 ```
 
 ---
 
-## CELL 15 - Format Output as Memo
+## Cell 14 - Report Formatting
 
 ```python
-def json_to_memo_md(result: dict) -> str:
+# Cell 14 - Report Formatting
+
+def format_readiness_report(result: Dict[str, Any], entity: EntityProfile = None) -> str:
+
     if not isinstance(result, dict):
-        return "## Error\n\nUnexpected result type."
+        return "## Error\n\nUnexpected result format."
 
     if "error" in result:
-        tb = result.get("traceback", "")
-        raw = result.get("raw_output", "")
-        return (
-            "## Error\n\n"
-            f"**{result['error']}**\n\n"
-            + (f"### Traceback\n```text\n{tb}\n```\n" if tb else "")
-            + (f"### Raw Output\n```text\n{raw}\n```\n" if raw else "")
-        )
+        return f"""## Error
 
-    def bullets(items, key="item"):
-        if not items:
-            return "_None found in provided sources._"
-        out = []
-        for x in items:
-            if isinstance(x, dict):
-                text = x.get(key) or x.get("point") or x.get("law") or ""
-                cit = x.get("citation", "")
-                out.append(f"- {text} **{cit}**" if cit else f"- {text}")
-            else:
-                out.append(f"- {x}")
-        return "\n".join(out)
+**{result['error']}**
+
+{result.get('traceback', '')}"""
 
     md = []
-    md.append("# Audit Research Memo")
+
+    md.append("# Audit Readiness Assessment Report")
+    md.append("")
+    md.append(f"**Assessment Date:** {date.today().isoformat()}")
+    if entity:
+        md.append(f"**Entity:** {entity.entity_name}")
+        md.append(f"**Type:** {entity.entity_type} | **Sector:** {entity.sector}")
     md.append("")
 
-    tax_area = result.get("tax_area", "Not specified")
-    md.append(f"**Tax Area:** {tax_area}")
+    md.append("## Overall Assessment")
     md.append("")
 
-    md.append("## Summary")
-    md.append(result.get("summary", "_No summary returned._"))
+    readiness = result.get("readiness_level", "Not Assessed")
+    risk_score = result.get("overall_risk_score", 0)
+
+    if readiness == "Ready":
+        badge = "LOW RISK - Ready for Audit"
+    elif readiness == "Partially Ready":
+        badge = "MEDIUM RISK - Some Gaps to Address"
+    elif readiness == "Not Ready":
+        badge = "HIGH RISK - Significant Gaps"
+    else:
+        badge = "CRITICAL RISK - Major Issues"
+
+    md.append(f"**Readiness Level:** {readiness}")
+    md.append(f"**Overall Risk Score:** {risk_score:.1f} / 10")
+    md.append(f"**Assessment:** {badge}")
     md.append("")
 
-    if result.get("relevant_laws"):
-        md.append("## Relevant Laws & Regulations")
-        md.append(bullets(result.get("relevant_laws", []), key="law"))
+    if result.get("summary"):
+        md.append("### Summary")
+        md.append(result["summary"])
         md.append("")
 
-    md.append("## Key Provisions")
-    md.append(bullets(result.get("key_provisions", []), key="point"))
-    md.append("")
-
-    md.append("## Obligations")
-    md.append(bullets(result.get("obligations", []), key="item"))
-    md.append("")
-
-    md.append("## Exemptions / Thresholds")
-    md.append(bullets(result.get("exemptions", []), key="item"))
-    md.append("")
-
-    md.append("## Penalties")
-    md.append(bullets(result.get("penalties", []), key="item"))
-    md.append("")
-
-    md.append("## Audit Checklist")
-    checklist = result.get("audit_checklist", [])
-    md.append("\n".join([f"- [ ] {x}" for x in checklist]) if checklist else "_None._")
-    md.append("")
-
-    md.append("## Assumptions")
-    assumptions = result.get("assumptions", [])
-    md.append("\n".join([f"- {x}" for x in assumptions]) if assumptions else "_None._")
-    md.append("")
-
-    md.append("## Sources Used")
-    srcs = result.get("sources_used", [])
-    md.append("\n".join([f"- {x}" for x in srcs]) if srcs else "_See Retrieved Sources panel._")
-
-    web_refs = result.get("web_references", [])
-    if web_refs:
+    actions = result.get("priority_actions", [])
+    if actions:
+        md.append("## Priority Actions")
         md.append("")
-        md.append("## Web References")
-        for ref in web_refs:
-            title = ref.get("title", "Link")
-            url = ref.get("url", "")
+        for i, action in enumerate(actions, 1):
+            md.append(f"{i}. {action}")
+        md.append("")
+
+    gaps = result.get("gaps", [])
+    if gaps:
+        md.append("## Identified Compliance Gaps")
+        md.append("")
+
+        for risk in ["Critical", "High", "Medium", "Low"]:
+            risk_gaps = [g for g in gaps if g.get("risk_level") == risk]
+            if risk_gaps:
+                md.append(f"### {risk} Risk Gaps")
+                md.append("")
+                for gap in risk_gaps:
+                    md.append(f"**{gap.get('gap_id', 'GAP')}** - {gap.get('area', 'General')}")
+                    md.append(f"")
+                    md.append(f"- **Description:** {gap.get('description', 'N/A')}")
+                    md.append(f"- **Requirement:** {gap.get('requirement_reference', 'N/A')}")
+                    md.append(f"- **Recommendation:** {gap.get('recommendation', 'N/A')}")
+                    evidence = gap.get("evidence_needed", [])
+                    if evidence:
+                        md.append(f"- **Evidence Needed:**")
+                        for e in evidence:
+                            md.append(f"  - {e}")
+                    md.append("")
+    else:
+        md.append("## Identified Compliance Gaps")
+        md.append("")
+        md.append("_No specific gaps identified based on the provided information._")
+        md.append("")
+
+    sources = result.get("_sources", [])
+    if sources:
+        md.append("## Reference Sources")
+        md.append("")
+        for src in sources[:5]:
+            url = src.get("url", "")
             if url:
-                md.append(f"- [{title}]({url})")
+                md.append(f"- [{src['source']}]({url})")
             else:
-                md.append(f"- {title}")
+                md.append(f"- {src['source']}")
+        md.append("")
 
     return "\n".join(md)
 
-print("✅ Memo formatting ready")
+def export_report_pdf(report_md: str, entity_name: str = "entity") -> str:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import inch
+
+    export_dir = Path("exports")
+    export_dir.mkdir(exist_ok=True)
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_name = re.sub(r'[^a-zA-Z0-9]', '_', entity_name)[:30]
+    pdf_path = export_dir / f"audit_readiness_{safe_name}_{ts}.pdf"
+
+    c = canvas.Canvas(str(pdf_path), pagesize=letter)
+    width, height = letter
+    x = 0.75 * inch
+    y = height - 0.9 * inch
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(x, y, "Audit Readiness Assessment Report")
+    y -= 0.35 * inch
+
+    c.setFont("Helvetica", 9)
+    c.drawString(x, y, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    y -= 0.35 * inch
+
+    c.setFont("Helvetica", 10)
+
+    for line in report_md.split("\n"):
+        if y < 0.8 * inch:
+            c.showPage()
+            y = height - 0.9 * inch
+            c.setFont("Helvetica", 10)
+
+        line = line.strip()
+        if line.startswith("# "):
+            c.setFont("Helvetica-Bold", 14)
+            line = line[2:]
+        elif line.startswith("## "):
+            c.setFont("Helvetica-Bold", 12)
+            line = line[3:]
+        elif line.startswith("### "):
+            c.setFont("Helvetica-Bold", 11)
+            line = line[4:]
+        else:
+            c.setFont("Helvetica", 10)
+
+        line = line.replace("**", "").replace("_", "")
+
+        for wrapped in textwrap.wrap(line, 90) or [""]:
+            if y < 0.8 * inch:
+                c.showPage()
+                y = height - 0.9 * inch
+            c.drawString(x, y, wrapped)
+            y -= 0.18 * inch
+
+    c.save()
+    return str(pdf_path)
+
+print("Report formatting ready.")
 ```
 
 ---
 
-## CELL 16 - Load Demo Files
+## Cell 15 - Load Demo Documents
 
 ```python
-out_dir = Path("tax_demo_docs")
+# Cell 15 - Load Demo Documents
 
-initial_uploaded_files_store = []
+out_dir = Path("standards_docs")
+
+initial_files = []
 if out_dir.exists():
     for f_path in out_dir.glob("*.pdf"):
         with open(f_path, "rb") as f:
-            initial_uploaded_files_store.append({"name": f_path.name, "bytes": f.read()})
+            initial_files.append({"name": f_path.name, "bytes": f.read()})
 
-print(f"✅ Demo files found: {len(initial_uploaded_files_store)}")
+print(f"Found {len(initial_files)} demo standards documents.")
+
+uploaded_files_store = []
 ```
 
 ---
 
-## CELL 17 - File Upload Handlers
+## Cell 16 - UI Helper Functions
 
 ```python
-uploaded_files_store = []
+# Cell 16 - UI Helper Functions
 
 def ui_upload(files) -> str:
     global uploaded_files_store
@@ -963,7 +1132,7 @@ def ui_upload(files) -> str:
         uploaded_files_store = []
 
         if not files:
-            return "No new files selected. Use demo files by clicking 'Build Index', or upload new ones."
+            return "No files selected. You can use the demo documents."
 
         for f in files:
             if isinstance(f, str) or hasattr(f, "__fspath__"):
@@ -971,454 +1140,443 @@ def ui_upload(files) -> str:
                 file_name = os.path.basename(file_path)
                 with open(file_path, "rb") as fp:
                     file_bytes = fp.read()
-            elif isinstance(f, dict) and "name" in f and "data" in f:
-                file_name = f["name"]
-                file_bytes = f["data"]
             elif hasattr(f, "name"):
                 file_path = getattr(f, "name")
                 file_name = os.path.basename(file_path)
                 with open(file_path, "rb") as fp:
                     file_bytes = fp.read()
             else:
-                return f"Unsupported file object type: {type(f)}"
+                return f"Unsupported file type: {type(f)}"
 
             uploaded_files_store.append({"name": file_name, "bytes": file_bytes})
 
-        return f"✅ Uploaded {len(uploaded_files_store)} file(s). Now click 'Build Index'."
+        return f"Uploaded {len(uploaded_files_store)} file(s). Click 'Build Index' to process."
 
     except Exception as e:
-        return f"❌ Upload failed: {type(e).__name__}: {e}\n{traceback.format_exc()}"
+        return f"Upload failed: {e}"
 
 def ui_build_index() -> str:
     global uploaded_files_store
 
-    if not uploaded_files_store and initial_uploaded_files_store:
-        uploaded_files_store = initial_uploaded_files_store
+    if not uploaded_files_store and initial_files:
+        uploaded_files_store = initial_files
 
     if not uploaded_files_store:
-        return "🛑 No files to index. Upload PDFs or ensure demo PDFs exist."
+        return "No documents to index. Please upload files or use demo documents."
 
     try:
         return build_index(uploaded_files_store)
     except Exception as e:
-        return f"❌ Indexing failed: {type(e).__name__}: {e}\n{traceback.format_exc()}"
+        return f"Indexing failed: {e}"
+
+print("UI helper functions ready.")
 ```
 
 ---
 
-## CELL 18 - UI Helper Functions
+## Cell 17 - Gradio User Interface
 
 ```python
+# Cell 17 - Gradio User Interface
+
 import gradio as gr
-import pandas as pd
-import uuid
 
-# PDF Export
-def _memo_md_to_plain_lines(memo_md: str):
-    lines = []
-    for raw in (memo_md or "").splitlines():
-        s = raw.strip()
-        if not s:
-            lines.append("")
-            continue
-        if s.startswith("### "):
-            lines.append(s.replace("### ", "").upper())
-            continue
-        if s.startswith("## "):
-            lines.append(s.replace("## ", "").upper())
-            continue
-        if s.startswith("# "):
-            lines.append(s.replace("# ", "").upper())
-            continue
-        if s.startswith("- "):
-            lines.append("* " + s[2:])
-            continue
-        s = s.replace("**", "")
-        lines.append(s)
-    return lines
+current_entity = None
+current_indicators = []
+current_findings = []
+current_result = {}
 
-def export_memo_pdf(memo_md: str, filename_prefix: str = "audit_memo") -> str:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.units import inch
-
-    export_dir = "exports"
-    os.makedirs(export_dir, exist_ok=True)
-
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    uid = uuid.uuid4().hex[:8]
-    pdf_path = os.path.join(export_dir, f"{filename_prefix}_{ts}_{uid}.pdf")
-
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    width, height = letter
-    x = 0.75 * inch
-    y = height - 0.9 * inch
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(x, y, "Audit Findings Memorandum")
-    y -= 0.35 * inch
-
-    c.setFont("Helvetica", 9)
-    c.drawString(x, y, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    y -= 0.35 * inch
-
-    c.setFont("Helvetica", 11)
-    lines = _memo_md_to_plain_lines(memo_md)
-
-    def wrap_line(line, max_chars=100):
-        if len(line) <= max_chars:
-            return [line]
-        chunks = []
-        words = line.split(" ")
-        cur = ""
-        for w in words:
-            if len(cur) + len(w) + 1 <= max_chars:
-                cur = (cur + " " + w).strip()
-            else:
-                chunks.append(cur)
-                cur = w
-        if cur:
-            chunks.append(cur)
-        return chunks
-
-    for line in lines:
-        if y < 0.8 * inch:
-            c.showPage()
-            y = height - 0.9 * inch
-            c.setFont("Helvetica", 11)
-
-        for wl in wrap_line(line, max_chars=100):
-            if y < 0.8 * inch:
-                c.showPage()
-                y = height - 0.9 * inch
-                c.setFont("Helvetica", 11)
-            c.drawString(x, y, wl)
-            y -= 0.18 * inch
-
-        if line == "":
-            y -= 0.05 * inch
-
-    c.save()
-    return pdf_path
-
-def export_memo_markdown(memo_md: str) -> str:
-    export_dir = "exports"
-    os.makedirs(export_dir, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    md_path = os.path.join(export_dir, f"audit_memo_{ts}.md")
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(memo_md)
-    return md_path
-
-def evidence_badge(df: pd.DataFrame) -> str:
-    if df is None or df.empty:
-        return "### Evidence strength: 🔴 Low\nNo source evidence retrieved."
-
-    unique_sources = df["source"].nunique()
-    total_chunks = len(df)
-    web_count = len(df[df["provenance"] == "web"]) if "provenance" in df.columns else 0
-    local_count = total_chunks - web_count
-
-    if unique_sources >= 3:
-        strength = "🟢 High"
-    elif unique_sources == 2:
-        strength = "🟡 Medium"
-    else:
-        strength = "🔴 Low"
-
-    return (
-        f"### Evidence strength: {strength}\n"
-        f"Evidence from {unique_sources} source(s): {local_count} local, {web_count} web "
-        f"({total_chunks} total excerpts)."
-    )
-
-def ui_ask(
-    query: str,
-    as_of_date: str,
-    top_k: int,
-    tax_area: str,
-    taxpayer_type: str,
-    sector: str,
-    detail_level: str,
-    constraints: List[str],
-    enable_web: bool,
-    enable_filtering: bool,
-    refine_mode: bool,
-    refinement_text: str,
-    last_state: dict
+def run_full_assessment(
+    entity_name, entity_type, sector, size, framework, fiscal_year,
+    years_operation, employees, budget, prior_rating, entity_notes,
+    indicators_json,
+    findings_json,
+    enable_web
 ):
+    global current_entity, current_indicators, current_findings, current_result
+
     try:
-        actual_query = query
-        if refine_mode and refinement_text and last_state:
-            actual_query = f"{query}\n\nREFINEMENT: {refinement_text}"
-
-        query_state = QueryState(
-            query_text=actual_query,
-            tax_area=tax_area if tax_area != "Auto-detect" else None,
-            taxpayer_type=taxpayer_type if taxpayer_type != "Not specified" else None,
-            sector=sector if sector != "Not specified" else None,
-            detail_level=detail_level.lower(),
-            as_of_date=as_of_date or date.today().isoformat(),
-            constraints=list(constraints) if constraints else [],
-            enable_web_search=enable_web
+        entity = EntityProfile(
+            entity_name=entity_name or "Unnamed Entity",
+            entity_type=entity_type,
+            sector=sector,
+            size_category=size,
+            reporting_framework=framework,
+            fiscal_year_end=fiscal_year,
+            years_in_operation=int(years_operation) if years_operation else 0,
+            total_employees=int(employees) if employees else 0,
+            annual_budget=budget or "",
+            prior_audit_rating=prior_rating if prior_rating != "Not Available" else None,
+            notes=entity_notes or ""
         )
+        current_entity = entity
 
-        result = run_workflow(query_state, enable_filtering=enable_filtering)
+        indicators = []
+        if indicators_json:
+            try:
+                ind_list = json.loads(indicators_json)
+                indicators = [ComplianceIndicator(**i) for i in ind_list]
+            except:
+                pass
+        current_indicators = indicators
 
-        sources = result.get("_retrieved_sources", [])
-        df = pd.DataFrame(sources) if sources else pd.DataFrame(
-            columns=["rank", "provenance", "source", "chunk_id", "score", "preview", "url"]
-        )
+        findings = []
+        if findings_json:
+            try:
+                find_list = json.loads(findings_json)
+                findings = [PriorFinding(**f) for f in find_list]
+            except:
+                pass
+        current_findings = findings
 
-        memo = json_to_memo_md(result)
-        badge = evidence_badge(df)
+        result = run_assessment(entity, indicators, findings, enable_web=enable_web)
+        current_result = result
 
-        ctx = result.get("_context_analysis", {})
-        ctx_info = f"Tax Area: {ctx.get('tax_area', 'N/A')} | Type: {ctx.get('request_type', 'N/A')} | Confidence: {ctx.get('confidence', 0):.0%}"
+        report = format_readiness_report(result, entity)
+
+        gaps = result.get("gaps", [])
+        critical = len([g for g in gaps if g.get("risk_level") == "Critical"])
+        high = len([g for g in gaps if g.get("risk_level") == "High"])
+        medium = len([g for g in gaps if g.get("risk_level") == "Medium"])
+        low = len([g for g in gaps if g.get("risk_level") == "Low"])
+
+        summary = f"""### Assessment Complete
+
+**Readiness Level:** {result.get('readiness_level', 'N/A')}
+**Risk Score:** {result.get('overall_risk_score', 0):.1f} / 10
+
+**Gaps Found:**
+- Critical: {critical}
+- High: {high}
+- Medium: {medium}
+- Low: {low}
+"""
 
         return (
+            report,
+            summary,
             json.dumps(result, indent=2, ensure_ascii=False),
-            df,
-            memo,
-            badge,
-            ctx_info,
             result
         )
 
     except Exception as e:
-        err = {
-            "error": f"{type(e).__name__}: {str(e)}",
-            "traceback": traceback.format_exc()[:6000]
-        }
-        df = pd.DataFrame(columns=["rank", "provenance", "source", "chunk_id", "score", "preview"])
-        memo = json_to_memo_md(err)
-        badge = "### Evidence strength: 🔴 Low\nAn error occurred."
-        return json.dumps(err, indent=2), df, memo, badge, "Error", err
+        error_msg = f"Assessment failed: {type(e).__name__}: {e}"
+        return (
+            f"## Error\n\n{error_msg}",
+            f"### Error\n\n{error_msg}",
+            json.dumps({"error": error_msg}),
+            {}
+        )
 
-def show_selected(df: pd.DataFrame, evt: gr.SelectData):
-    if df is None or df.empty:
-        return "No sources to preview."
-    row = df.iloc[evt.index[0]].to_dict()
-    url_info = f"\nURL: {row.get('url')}" if row.get('url') else ""
-    return (
-        f"Source: {row.get('source')}\n"
-        f"Chunk: {row.get('chunk_id')}\n"
-        f"Provenance: {row.get('provenance', 'local')}\n"
-        f"Score: {row.get('score'):.4f}"
-        f"{url_info}\n\n"
-        f"{row.get('preview')}"
-    )
+def add_compliance_indicator(area, status, has_docs, has_policies, last_review, notes, current_json):
+    try:
+        indicators = json.loads(current_json) if current_json else []
+    except:
+        indicators = []
 
-def fill_q1():
-    return "Late filing VAT return: what are the penalties and what small business thresholds or exemptions apply?"
+    new_indicator = {
+        "area": area,
+        "status": status,
+        "has_documentation": has_docs,
+        "has_policies": has_policies,
+        "last_review_date": last_review or None,
+        "notes": notes or ""
+    }
+    indicators.append(new_indicator)
 
-def fill_q2():
-    return "Provide an audit checklist to verify late filing and late payment, including what evidence to request."
+    display = "\n".join([f"- {i['area']}: {i['status']}" for i in indicators])
 
-def fill_q3():
-    return "What is the corporate income tax rate and what penalties apply?"
+    return json.dumps(indicators), display
 
-def ui_download_pdf(state_result: dict):
-    if not isinstance(state_result, dict) or not state_result:
-        raise gr.Error("No memo available yet. Please run a query first.")
-    memo_md = json_to_memo_md(state_result)
-    return export_memo_pdf(memo_md)
+def clear_indicators():
+    return "", "_No indicators added yet_"
 
-def ui_download_md(state_result: dict):
-    if not isinstance(state_result, dict) or not state_result:
-        raise gr.Error("No memo available yet. Please run a query first.")
-    memo_md = json_to_memo_md(state_result)
-    return export_memo_markdown(memo_md)
+def add_prior_finding(category, severity, status, description, year, remediation, current_json):
+    try:
+        findings = json.loads(current_json) if current_json else []
+    except:
+        findings = []
 
-def process_batch(queries_text: str, enable_web: bool, enable_filtering: bool):
-    if not queries_text.strip():
-        return pd.DataFrame(columns=["query", "tax_area", "summary", "sources_count"])
+    finding_id = f"F-{len(findings)+1:03d}"
+    new_finding = {
+        "finding_id": finding_id,
+        "category": category,
+        "severity": severity,
+        "status": status,
+        "description": description,
+        "year_identified": int(year) if year else 0,
+        "remediation_plan": remediation or "",
+        "target_date": ""
+    }
+    findings.append(new_finding)
 
-    queries = [q.strip() for q in queries_text.strip().split("\n") if q.strip()]
-    results = []
+    display = "\n".join([f"- {f['finding_id']}: {f['category']} ({f['severity']}) - {f['status']}" for f in findings])
 
-    for q in queries:
-        query_state = QueryState(query_text=q, enable_web_search=enable_web)
-        result = run_workflow(query_state, enable_filtering=enable_filtering)
-        results.append({
-            "query": q[:100],
-            "tax_area": result.get("tax_area", result.get("_context_analysis", {}).get("tax_area", "")),
-            "summary": result.get("summary", "")[:200],
-            "sources_count": len(result.get("_retrieved_sources", []))
-        })
+    return json.dumps(findings), display
 
-    return pd.DataFrame(results)
+def clear_findings():
+    return "", "_No findings added yet_"
 
-print("✅ UI functions ready")
+def download_report(result_state):
+    global current_entity, current_result
+
+    if not current_result:
+        raise gr.Error("No assessment results. Please run an assessment first.")
+
+    report = format_readiness_report(current_result, current_entity)
+    entity_name = current_entity.entity_name if current_entity else "entity"
+    return export_report_pdf(report, entity_name)
+
+print("UI functions defined.")
 ```
 
 ---
 
-## CELL 19 - Launch the App
+## Cell 18 - Launch Interface
 
 ```python
-with gr.Blocks(title="Tax Audit Copilot") as demo:
-    gr.Markdown("""
-# Tax Audit Research & Decision Support
-**Workflow:** Upload PDFs → Build Index → Ask scenario → Review memo + evidence → Download
+# Cell 18 - Launch Interface
 
-**By: Abdulla Ahmed Alaydaroos**
+with gr.Blocks(title="Audit Readiness Assistant", theme=gr.themes.Soft()) as demo:
+
+    gr.Markdown("""
+# AI-Powered Audit Readiness Assistant
+
+This system helps assess whether an organization is ready for audit by:
+1. Collecting organization information and compliance self-assessment
+2. Reviewing inputs against regulatory requirements
+3. Identifying compliance gaps and high-risk areas
+4. Generating an audit readiness report with recommendations
+
+**Instructions:** Complete each tab in order, then run the assessment.
 """)
 
-    state_result = gr.State({})
+    indicators_state = gr.State("")
+    findings_state = gr.State("")
+    result_state = gr.State({})
 
-    with gr.Tab("1) Upload & Index"):
-        uploader = gr.File(file_count="multiple", label="Upload PDFs/DOCX/TXT")
-        upload_status = gr.Textbox(label="Upload status", interactive=False)
+    with gr.Tab("1. Document Setup"):
+        gr.Markdown("""
+### Upload Standards Documents
+
+Upload regulatory documents, standards, or guidelines that the assessment should reference.
+Demo documents are provided for testing.
+""")
+
+        uploader = gr.File(file_count="multiple", label="Upload Documents (PDF, DOCX, TXT)")
+        upload_status = gr.Textbox(label="Upload Status", interactive=False)
         uploader.change(fn=ui_upload, inputs=uploader, outputs=upload_status)
 
         build_btn = gr.Button("Build Index", variant="primary")
-        build_status = gr.Textbox(label="Index status", interactive=False)
-        build_btn.click(fn=ui_build_index, inputs=None, outputs=build_status)
+        build_status = gr.Textbox(label="Index Status", interactive=False)
+        build_btn.click(fn=ui_build_index, outputs=build_status)
 
         gr.Markdown(f"""
 ---
-**Web Search Status:** {'✅ Enabled (Tavily API key loaded)' if TAVILY_API_KEY else '⚠️ Disabled (add TAVILY_API_KEY to Colab Secrets)'}
+**Web Search:** {'Enabled' if TAVILY_API_KEY else 'Disabled (add TAVILY_API_KEY to enable)'}
+
+**Demo Documents Available:** {len(initial_files)} standards documents
 """)
 
-    with gr.Tab("2) Ask"):
+    with gr.Tab("2. Organization Profile"):
+        gr.Markdown("""
+### Enter Organization Details
+
+Provide basic information about the organization being assessed.
+""")
+
+        with gr.Row():
+            entity_name = gr.Textbox(label="Organization Name", placeholder="e.g., ABC Government Department")
+            entity_type = gr.Dropdown(
+                label="Entity Type",
+                choices=["Government Entity", "Semi-Government Entity", "Private Sector", "Non-Profit Organization"],
+                value="Government Entity"
+            )
+
+        with gr.Row():
+            sector = gr.Dropdown(
+                label="Sector",
+                choices=["Public Administration", "Healthcare", "Education", "Finance", "Infrastructure", "Technology", "Other"],
+                value="Public Administration"
+            )
+            size = gr.Dropdown(
+                label="Organization Size",
+                choices=["Small (< 50 employees)", "Medium (50-250 employees)", "Large (> 250 employees)"],
+                value="Medium (50-250 employees)"
+            )
+
+        with gr.Row():
+            framework = gr.Dropdown(
+                label="Reporting Framework",
+                choices=["IFRS", "Local GAAP", "IPSAS", "US GAAP", "Other"],
+                value="IFRS"
+            )
+            fiscal_year = gr.Textbox(label="Fiscal Year End", placeholder="e.g., December 31", value="December 31")
+
+        with gr.Row():
+            years_operation = gr.Number(label="Years in Operation", value=10)
+            employees = gr.Number(label="Total Employees", value=150)
+
+        with gr.Row():
+            budget = gr.Textbox(label="Annual Budget", placeholder="e.g., AED 50 million")
+            prior_rating = gr.Dropdown(
+                label="Prior Audit Rating",
+                choices=["Not Available", "Unqualified", "Qualified", "Adverse", "Disclaimer"],
+                value="Not Available"
+            )
+
+        entity_notes = gr.Textbox(label="Additional Notes", lines=2, placeholder="Any relevant context...")
+
+    with gr.Tab("3. Compliance Self-Assessment"):
+        gr.Markdown("""
+### Compliance Self-Assessment
+
+For each compliance area, indicate your current status. Add all relevant areas.
+""")
+
         with gr.Row():
             with gr.Column(scale=2):
-                query = gr.Textbox(
-                    label="Audit question / scenario",
-                    lines=4,
-                    placeholder="Example: Late filing VAT return - penalties, thresholds, exemptions..."
+                comp_area = gr.Dropdown(
+                    label="Compliance Area",
+                    choices=[
+                        "Financial Reporting", "Internal Controls", "Asset Management",
+                        "Procurement & Contracts", "HR & Payroll", "IT Systems & Security",
+                        "Regulatory Compliance", "Governance & Oversight"
+                    ],
+                    value="Financial Reporting"
+                )
+                comp_status = gr.Dropdown(
+                    label="Self-Assessment Status",
+                    choices=["Compliant", "Partially Compliant", "Non-Compliant", "Not Yet Assessed", "Not Applicable"],
+                    value="Partially Compliant"
+                )
+                with gr.Row():
+                    has_docs = gr.Checkbox(label="Documentation Available", value=True)
+                    has_policies = gr.Checkbox(label="Policies Documented", value=True)
+                last_review = gr.Textbox(label="Last Review Date", placeholder="e.g., 2024-06-30")
+                comp_notes = gr.Textbox(label="Notes", placeholder="Additional context...")
+
+                with gr.Row():
+                    add_indicator_btn = gr.Button("Add Indicator", variant="primary")
+                    clear_indicators_btn = gr.Button("Clear All")
+
+            with gr.Column(scale=1):
+                gr.Markdown("### Added Indicators")
+                indicators_display = gr.Markdown("_No indicators added yet_")
+
+        add_indicator_btn.click(
+            fn=add_compliance_indicator,
+            inputs=[comp_area, comp_status, has_docs, has_policies, last_review, comp_notes, indicators_state],
+            outputs=[indicators_state, indicators_display]
+        )
+        clear_indicators_btn.click(
+            fn=clear_indicators,
+            outputs=[indicators_state, indicators_display]
+        )
+
+    with gr.Tab("4. Prior Audit Findings"):
+        gr.Markdown("""
+### Prior Audit Findings
+
+Enter any findings from previous audits. This helps identify recurring issues.
+""")
+
+        with gr.Row():
+            with gr.Column(scale=2):
+                find_category = gr.Dropdown(
+                    label="Category",
+                    choices=[
+                        "Financial Reporting", "Internal Controls", "Asset Management",
+                        "Procurement", "HR & Payroll", "IT Controls", "Governance", "Other"
+                    ],
+                    value="Internal Controls"
+                )
+                with gr.Row():
+                    find_severity = gr.Dropdown(
+                        label="Severity",
+                        choices=["Critical", "High", "Medium", "Low"],
+                        value="Medium"
+                    )
+                    find_status = gr.Dropdown(
+                        label="Current Status",
+                        choices=["Open", "In Progress", "Remediated", "Recurring"],
+                        value="Open"
+                    )
+                find_description = gr.Textbox(
+                    label="Finding Description",
+                    lines=2,
+                    placeholder="Describe the audit finding..."
+                )
+                find_year = gr.Number(label="Year Identified", value=2023)
+                find_remediation = gr.Textbox(
+                    label="Remediation Plan",
+                    placeholder="What actions have been or will be taken?"
                 )
 
                 with gr.Row():
-                    demo_q1 = gr.Button("Demo: Late filing + thresholds")
-                    demo_q2 = gr.Button("Demo: Audit checklist")
-                    demo_q3 = gr.Button("Demo: Refusal test")
+                    add_finding_btn = gr.Button("Add Finding", variant="primary")
+                    clear_findings_btn = gr.Button("Clear All")
 
-                with gr.Accordion("Advanced Options", open=False):
-                    with gr.Row():
-                        tax_area = gr.Dropdown(
-                            choices=["Auto-detect", "VAT", "Corporate Tax", "Excise Tax", "Transfer Pricing", "Customs", "General"],
-                            value="Auto-detect",
-                            label="Tax Area"
-                        )
-                        taxpayer_type = gr.Dropdown(
-                            choices=["Not specified", "Individual", "SME", "Large Corporate", "Government Entity"],
-                            value="Not specified",
-                            label="Taxpayer Type"
-                        )
+            with gr.Column(scale=1):
+                gr.Markdown("### Added Findings")
+                findings_display = gr.Markdown("_No findings added yet_")
 
-                    with gr.Row():
-                        sector = gr.Dropdown(
-                            choices=["Not specified", "Real Estate", "Financial Services", "Manufacturing", "Retail", "Technology", "Healthcare", "Oil & Gas"],
-                            value="Not specified",
-                            label="Sector"
-                        )
-                        detail_level = gr.Radio(
-                            choices=["Brief", "Standard", "Comprehensive"],
-                            value="Standard",
-                            label="Detail Level"
-                        )
+        add_finding_btn.click(
+            fn=add_prior_finding,
+            inputs=[find_category, find_severity, find_status, find_description, find_year, find_remediation, findings_state],
+            outputs=[findings_state, findings_display]
+        )
+        clear_findings_btn.click(
+            fn=clear_findings,
+            outputs=[findings_state, findings_display]
+        )
 
-                    constraints = gr.CheckboxGroup(
-                        choices=["VAT only", "Corporate Tax only", "Include penalties", "Include exemptions", "Exclude historical"],
-                        label="Focus Constraints"
-                    )
+    with gr.Tab("5. Run Assessment"):
+        gr.Markdown("""
+### Generate Audit Readiness Assessment
 
-                with gr.Row():
-                    as_of = gr.Textbox(label="As-of date", value="Today", scale=1)
-                    topk = gr.Slider(3, 10, value=6, step=1, label="Top-K excerpts", scale=1)
+Click the button below to analyze all inputs and generate the gap analysis report.
+""")
 
-                with gr.Row():
-                    enable_web = gr.Checkbox(
-                        value=TAVILY_API_KEY is not None,
-                        label="Enable Web Search",
-                        interactive=TAVILY_API_KEY is not None
-                    )
-                    enable_filtering = gr.Checkbox(
-                        value=True,
-                        label="Enable Relevance Filtering"
-                    )
+        with gr.Row():
+            enable_web = gr.Checkbox(
+                label="Enable Web Search",
+                value=TAVILY_API_KEY is not None,
+                interactive=TAVILY_API_KEY is not None
+            )
 
-                with gr.Accordion("Refine Previous Answer", open=False):
-                    refine_mode = gr.Checkbox(value=False, label="Refine previous answer")
-                    refinement_text = gr.Textbox(
-                        label="Refinement instruction",
-                        placeholder="e.g., Focus on penalties only, Exclude VAT, Add more detail...",
-                        lines=2
-                    )
-
-                ask_btn = gr.Button("Generate Audit Summary", variant="primary")
-
-                context_info = gr.Textbox(label="Context Analysis", interactive=False)
-                badge_md = gr.Markdown()
-
-                with gr.Row():
-                    download_pdf_btn = gr.Button("Download PDF")
-                    download_md_btn = gr.Button("Download Markdown")
-                download_file = gr.File(label="Download", interactive=False)
-
-            with gr.Column(scale=3):
-                out_memo = gr.Markdown(label="Audit Findings Memorandum")
+        run_btn = gr.Button("Run Audit Readiness Assessment", variant="primary", size="lg")
 
         gr.Markdown("---")
 
         with gr.Row():
-            with gr.Column(scale=2):
-                out_sources = gr.Dataframe(
-                    label="Source Evidence (click row to preview)",
-                    interactive=False,
-                    wrap=True
-                )
-                selected_preview = gr.Textbox(label="Selected Evidence Preview", lines=8, interactive=False)
+            with gr.Column(scale=1):
+                summary_output = gr.Markdown("### Results will appear here")
+                download_btn = gr.Button("Download Report (PDF)")
+                download_file = gr.File(label="Download", interactive=False)
 
             with gr.Column(scale=2):
-                out_json = gr.Code(label="Structured Output (JSON)", language="json")
+                report_output = gr.Markdown(label="Audit Readiness Report")
 
-        # Events
-        demo_q1.click(fill_q1, outputs=query)
-        demo_q2.click(fill_q2, outputs=query)
-        demo_q3.click(fill_q3, outputs=query)
+        gr.Markdown("---")
 
-        ask_btn.click(
-            fn=ui_ask,
+        with gr.Accordion("Raw JSON Output", open=False):
+            json_output = gr.Code(language="json")
+
+        run_btn.click(
+            fn=run_full_assessment,
             inputs=[
-                query, as_of, topk,
-                tax_area, taxpayer_type, sector, detail_level, constraints,
-                enable_web, enable_filtering,
-                refine_mode, refinement_text, state_result
+                entity_name, entity_type, sector, size, framework, fiscal_year,
+                years_operation, employees, budget, prior_rating, entity_notes,
+                indicators_state, findings_state, enable_web
             ],
-            outputs=[out_json, out_sources, out_memo, badge_md, context_info, state_result]
+            outputs=[report_output, summary_output, json_output, result_state]
         )
 
-        out_sources.select(fn=show_selected, inputs=out_sources, outputs=selected_preview)
-
-        download_pdf_btn.click(fn=ui_download_pdf, inputs=state_result, outputs=download_file)
-        download_md_btn.click(fn=ui_download_md, inputs=state_result, outputs=download_file)
-
-    with gr.Tab("3) Batch Analysis"):
-        gr.Markdown("""
-### Batch Query Processing
-Enter multiple queries (one per line) to process them all at once.
-""")
-
-        batch_input = gr.Textbox(
-            label="Queries (one per line)",
-            lines=6,
-            placeholder="Query 1: What are VAT penalties?\nQuery 2: Corporate tax rate in UAE?\nQuery 3: Excise tax on tobacco?"
-        )
-
-        with gr.Row():
-            batch_web = gr.Checkbox(value=TAVILY_API_KEY is not None, label="Enable Web Search", interactive=TAVILY_API_KEY is not None)
-            batch_filter = gr.Checkbox(value=True, label="Enable Filtering")
-
-        batch_btn = gr.Button("Process Batch", variant="primary")
-        batch_output = gr.Dataframe(label="Results", wrap=True)
-
-        batch_btn.click(
-            fn=process_batch,
-            inputs=[batch_input, batch_web, batch_filter],
-            outputs=batch_output
+        download_btn.click(
+            fn=download_report,
+            inputs=[result_state],
+            outputs=[download_file]
         )
 
 demo.launch(share=False)
@@ -1429,30 +1587,41 @@ demo.launch(share=False)
 ## How to Use
 
 1. Open a new Google Colab notebook
-2. Copy each cell above in order (Cell 1 to Cell 19)
+2. Copy each cell above in order (Cell 1 to Cell 18)
 3. Add your API keys to Colab Secrets (key icon on left sidebar):
    - `OPEN_AI_API` - Required
    - `TAVILY_API_KEY` - Optional (for web search)
 4. Run all cells
-5. Use the Gradio interface
+5. Use the Gradio interface:
+   - Tab 1: Build the document index
+   - Tab 2: Enter organization details
+   - Tab 3: Add compliance self-assessment indicators
+   - Tab 4: Add prior audit findings (if any)
+   - Tab 5: Run assessment and view results
 
 ---
 
-## System Overview
+## System Workflow
 
 ```
-┌─────────┐    ┌──────────────────┐    ┌───────────┐    ┌───────────┐    ┌─────────┐
-│  Input  │───▶│ Query Classification│───▶│ Retrieval │───▶│ Filtering │───▶│ Summary │
-└─────────┘    └──────────────────┘    └───────────┘    └───────────┘    └─────────┘
-                                              │
-                                        ┌─────┴─────┐
-                                        │           │
-                                   ┌────┴────┐ ┌────┴────┐
-                                   │  Local  │ │   Web   │
-                                   │ (FAISS) │ │(Tavily) │
-                                   └─────────┘ └─────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  ENTITY INTAKE  │────>│ STANDARDS LOAD  │────>│  GAP ANALYSIS   │
+│                 │     │                 │     │                 │
+│ - Org details   │     │ - IFRS rules    │     │ - Compare       │
+│ - Sector/size   │     │ - ADAA guides   │     │ - Find gaps     │
+│ - Framework     │     │ - Controls      │     │ - Score risk    │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                                               │
+         v                                               v
+┌─────────────────┐                             ┌─────────────────┐
+│ COMPLIANCE INFO │                             │ READINESS REPORT│
+│                 │                             │                 │
+│ - Self-assess   │                             │ - Risk summary  │
+│ - Prior findings│                             │ - Gap details   │
+│ - Evidence      │                             │ - Actions needed│
+└─────────────────┘                             └─────────────────┘
 ```
 
 ---
 
-**Capstone Project - Abdulla Ahmed Alaydaroos**
+**Capstone Project by: Abdulla Ahmed Alaydaroos**
