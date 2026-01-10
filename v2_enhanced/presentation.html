@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Audit Readiness Assistant | Capstone Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;1,8..60,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1e3a5f;
+            --navy-dark: #152a45;
+            --navy-light: #2d5a87;
+            --green: #4ade80;
+            --green-dark: #22c55e;
+            --green-light: #86efac;
+            --cream: #fafaf8;
+            --gray-100: #f4f4f5;
+            --gray-200: #e4e4e7;
+            --gray-400: #a1a1aa;
+            --gray-600: #52525b;
+            --gray-800: #27272a;
+            --white: #ffffff;
+            --slide-width: 1920px;
+            --slide-height: 1080px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--gray-800);
+            color: var(--gray-800);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Presentation Container */
+        .presentation {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: calc(100vh * 16 / 9);
+            max-height: calc(100vw * 9 / 16);
+            background: var(--white);
+            box-shadow: 0 25px 100px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        /* Slides */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 5%;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .slide.active .animate-in {
+            animation: fadeSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s !important; }
+        .delay-2 { animation-delay: 0.2s !important; }
+        .delay-3 { animation-delay: 0.3s !important; }
+        .delay-4 { animation-delay: 0.4s !important; }
+        .delay-5 { animation-delay: 0.5s !important; }
+        .delay-6 { animation-delay: 0.6s !important; }
+        .delay-7 { animation-delay: 0.7s !important; }
+        .delay-8 { animation-delay: 0.8s !important; }
+
+        /* Typography */
+        h1 {
+            font-size: 4.5rem;
+            font-weight: 600;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            color: var(--navy);
+        }
+
+        h2 {
+            font-size: 3.2rem;
+            font-weight: 600;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            color: var(--navy);
+            margin-bottom: 3rem;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--navy-light);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 1.5rem;
+            line-height: 1.6;
+            color: var(--gray-600);
+        }
+
+        .subtitle {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 1.8rem;
+            font-weight: 400;
+            color: var(--gray-600);
+            font-style: italic;
+        }
+
+        /* Navigation */
+        .nav-controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            z-index: 100;
+            background: var(--white);
+            padding: 0.75rem 1.5rem;
+            border-radius: 100px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: var(--gray-100);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: var(--navy);
+        }
+
+        .nav-btn:hover {
+            background: var(--navy);
+            color: var(--white);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .nav-btn:disabled:hover {
+            background: var(--gray-100);
+            color: var(--navy);
+        }
+
+        .slide-counter {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-600);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--green);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+
+        /* Slide Number Badge */
+        .slide-number {
+            position: absolute;
+            bottom: 5%;
+            right: 5%;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-400);
+        }
+
+        /* ===== SLIDE-SPECIFIC STYLES ===== */
+
+        /* Title Slide */
+        .slide-title {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-title::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 200%;
+            background: radial-gradient(ellipse, rgba(45, 90, 135, 0.4) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .slide-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--green), var(--green-light));
+        }
+
+        .slide-title h1 {
+            color: var(--white);
+            font-size: 4rem;
+            max-width: 900px;
+        }
+
+        .slide-title .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 1.5rem;
+        }
+
+        .slide-title .slide-number {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .title-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 2.5rem;
+        }
+
+        .title-logo svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+        }
+
+        /* Content Slides */
+        .slide-content {
+            background: var(--white);
+            position: relative;
+        }
+
+        .slide-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 8px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
+        }
+
+        .slide-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .header-accent {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .header-accent svg {
+            width: 32px;
+            height: 32px;
+            color: var(--white);
+        }
+
+        /* Problem List */
+        .problem-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .problem-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
+            background: var(--gray-100);
+            border-radius: 12px;
+            border-left: 4px solid var(--navy);
+        }
+
+        .problem-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--white);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .problem-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--navy);
+        }
+
+        .problem-text {
+            font-size: 1.35rem;
+            color: var(--gray-800);
+            font-weight: 400;
+        }
+
+        /* Solution Points */
+        .solution-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .solution-card {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+            padding: 2rem;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .solution-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(74, 222, 128, 0.2) 0%, transparent 70%);
+        }
+
+        .solution-card h4 {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+        }
+
+        .solution-card p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.25rem;
+            line-height: 1.5;
+        }
+
+        /* Workflow */
+        .workflow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .workflow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .workflow-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 40px rgba(30, 58, 95, 0.3);
+        }
+
+        .workflow-icon svg {
+            width: 48px;
+            height: 48px;
+            color: var(--white);
+        }
+
+        .workflow-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--navy);
+            max-width: 120px;
+        }
+
+        .workflow-arrow {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--green);
+        }
+
+        .workflow-arrow svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .feature-card {
+            padding: 1.75rem;
+            background: var(--cream);
+            border-radius: 16px;
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .feature-icon svg {
+            width: 28px;
+            height: 28px;
+            color: var(--white);
+        }
+
+        .feature-card h4 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+        }
+
+        /* Demo Slides */
+        .demo-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .demo-placeholder {
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16 / 10;
+            background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 100%);
+            border-radius: 20px;
+            border: 2px dashed var(--gray-400);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-placeholder::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(90deg, transparent 49.5%, var(--gray-300) 49.5%, var(--gray-300) 50.5%, transparent 50.5%),
+                linear-gradient(0deg, transparent 49.5%, var(--gray-300) 49.5%, var(--gray-300) 50.5%, transparent 50.5%);
+            background-size: 40px 40px;
+            opacity: 0.3;
+        }
+
+        .demo-badge {
+            background: var(--navy);
+            color: var(--white);
+            padding: 0.75rem 2rem;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            z-index: 1;
+        }
+
+        .demo-label {
+            font-size: 1.25rem;
+            color: var(--gray-600);
+            z-index: 1;
+        }
+
+        /* Tech Stack */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .tech-card {
+            background: var(--white);
+            border: 2px solid var(--gray-200);
+            border-radius: 20px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .tech-card:hover {
+            border-color: var(--green);
+            transform: translateY(-6px);
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.1);
+        }
+
+        .tech-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .tech-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--white);
+        }
+
+        .tech-card h4 {
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+        }
+
+        .tech-card p {
+            font-size: 1rem;
+            color: var(--gray-600);
+        }
+
+        /* Value Props */
+        .value-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            margin-top: 1rem;
+        }
+
+        .value-item {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.25rem 1.75rem;
+            background: var(--white);
+            border-radius: 16px;
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .value-item:hover {
+            border-color: var(--green);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .value-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .value-icon svg {
+            width: 28px;
+            height: 28px;
+            color: var(--white);
+        }
+
+        .value-content h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.25rem;
+        }
+
+        .value-content p {
+            font-size: 1rem;
+            color: var(--gray-600);
+        }
+
+        /* Future Items */
+        .future-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .future-card {
+            padding: 2rem;
+            background: var(--cream);
+            border-radius: 16px;
+            border-left: 4px solid var(--green);
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
+        }
+
+        .future-number {
+            width: 40px;
+            height: 40px;
+            background: var(--navy);
+            color: var(--white);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .future-card h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 0.35rem;
+        }
+
+        .future-card p {
+            font-size: 1rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+        }
+
+        /* Thank You Slide */
+        .slide-thanks {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-thanks::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(ellipse, rgba(74, 222, 128, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .slide-thanks h1 {
+            color: var(--white);
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+
+        .slide-thanks .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .contact-info {
+            display: flex;
+            gap: 3rem;
+            justify-content: center;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+        }
+
+        .contact-item svg {
+            width: 24px;
+            height: 24px;
+            color: var(--green);
+        }
+
+        .slide-thanks .slide-number {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* ===== PRINT STYLES ===== */
+        @media print {
+            html, body {
+                background: white;
+                overflow: visible;
+            }
+
+            .presentation {
+                display: block;
+                width: auto;
+                height: auto;
+            }
+
+            .slide-container {
+                max-width: none;
+                max-height: none;
+                box-shadow: none;
+            }
+
+            .slide {
+                position: relative;
+                opacity: 1 !important;
+                visibility: visible !important;
+                page-break-after: always;
+                page-break-inside: avoid;
+                height: 100vh;
+                width: 100vw;
+            }
+
+            .slide .animate-in {
+                opacity: 1 !important;
+                transform: none !important;
+                animation: none !important;
+            }
+
+            .nav-controls,
+            .progress-bar {
+                display: none !important;
+            }
+
+            .slide-title::after,
+            .slide-content::before {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        @page {
+            size: landscape;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <div class="presentation">
+        <div class="slide-container">
+
+            <!-- Slide 1: Title -->
+            <div class="slide slide-title active" data-slide="1">
+                <div class="title-logo animate-in delay-1">
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="120" height="120" rx="24" fill="url(#logoGrad)"/>
+                        <path d="M60 20L95 38V62C95 82 78 98 60 104C42 98 25 82 25 62V38L60 20Z" stroke="white" stroke-width="4" fill="none"/>
+                        <path d="M45 60L55 70L75 50" stroke="#4ade80" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <defs>
+                            <linearGradient id="logoGrad" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#2d5a87"/>
+                                <stop offset="1" stop-color="#1e3a5f"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <h1 class="animate-in delay-2">AI-Powered Audit<br>Readiness Assistant</h1>
+                <p class="subtitle animate-in delay-3">Capstone Project by Abdulla Ahmed Alaydaroos</p>
+                <span class="slide-number">01 / 11</span>
+            </div>
+
+            <!-- Slide 2: The Problem -->
+            <div class="slide slide-content" data-slide="2">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>The Challenge</h3>
+                        <h2>Current Audit Preparation<br>is Broken</h2>
+                    </div>
+                </div>
+                <div class="problem-list">
+                    <div class="problem-item animate-in delay-2">
+                        <div class="problem-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                        </div>
+                        <span class="problem-text">Manual audit preparation is time-consuming and error-prone</span>
+                    </div>
+                    <div class="problem-item animate-in delay-3">
+                        <div class="problem-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <span class="problem-text">Compliance gaps are often discovered too late in the process</span>
+                    </div>
+                    <div class="problem-item animate-in delay-4">
+                        <div class="problem-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <span class="problem-text">Inconsistent assessments across different reviewers</span>
+                    </div>
+                    <div class="problem-item animate-in delay-5">
+                        <div class="problem-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <span class="problem-text">Regulatory authorities need efficient, reliable assessment tools</span>
+                    </div>
+                </div>
+                <span class="slide-number">02 / 11</span>
+            </div>
+
+            <!-- Slide 3: The Solution -->
+            <div class="slide slide-content" data-slide="3">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Our Solution</h3>
+                        <h2>AI-Powered Audit<br>Readiness Assessment</h2>
+                    </div>
+                </div>
+                <div class="solution-grid">
+                    <div class="solution-card animate-in delay-2">
+                        <h4>Intelligent Analysis</h4>
+                        <p>AI-powered assistant that understands regulatory requirements and compliance standards</p>
+                    </div>
+                    <div class="solution-card animate-in delay-3">
+                        <h4>Gap Detection</h4>
+                        <p>Automatically identifies compliance gaps by comparing against established frameworks</p>
+                    </div>
+                    <div class="solution-card animate-in delay-4">
+                        <h4>Risk Prioritization</h4>
+                        <p>Categorizes findings as Critical, High, Medium, or Low to focus attention</p>
+                    </div>
+                    <div class="solution-card animate-in delay-5">
+                        <h4>Actionable Output</h4>
+                        <p>Generates recommendations with evidence checklists for each identified gap</p>
+                    </div>
+                </div>
+                <span class="slide-number">03 / 11</span>
+            </div>
+
+            <!-- Slide 4: How It Works -->
+            <div class="slide slide-content" data-slide="4">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Process</h3>
+                        <h2>How It Works</h2>
+                    </div>
+                </div>
+                <div class="workflow-container">
+                    <div class="workflow-step animate-in delay-2">
+                        <div class="workflow-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <span class="workflow-label">Entity Profile</span>
+                    </div>
+                    <div class="workflow-arrow animate-in delay-3">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </div>
+                    <div class="workflow-step animate-in delay-3">
+                        <div class="workflow-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3L22 4"/>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                            </svg>
+                        </div>
+                        <span class="workflow-label">Compliance Check</span>
+                    </div>
+                    <div class="workflow-arrow animate-in delay-4">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </div>
+                    <div class="workflow-step animate-in delay-4">
+                        <div class="workflow-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                <line x1="11" y1="8" x2="11" y2="14"/>
+                                <line x1="8" y1="11" x2="14" y2="11"/>
+                            </svg>
+                        </div>
+                        <span class="workflow-label">Gap Analysis</span>
+                    </div>
+                    <div class="workflow-arrow animate-in delay-5">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </div>
+                    <div class="workflow-step animate-in delay-5">
+                        <div class="workflow-icon" style="background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <span class="workflow-label">Risk Report</span>
+                    </div>
+                </div>
+                <span class="slide-number">04 / 11</span>
+            </div>
+
+            <!-- Slide 5: Key Features -->
+            <div class="slide slide-content" data-slide="5">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Capabilities</h3>
+                        <h2>Key Features</h2>
+                    </div>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card animate-in delay-2">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <h4>Entity Profiling</h4>
+                        <p>Capture organization type, size, sector, and reporting framework</p>
+                    </div>
+                    <div class="feature-card animate-in delay-3">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3L22 4"/>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                            </svg>
+                        </div>
+                        <h4>Compliance Assessment</h4>
+                        <p>Evaluate 8 key compliance areas with structured checklists</p>
+                    </div>
+                    <div class="feature-card animate-in delay-4">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 20V10"/>
+                                <path d="M18 20V4"/>
+                                <path d="M6 20v-4"/>
+                            </svg>
+                        </div>
+                        <h4>Prior Findings</h4>
+                        <p>Track and analyze historical audit observations</p>
+                    </div>
+                    <div class="feature-card animate-in delay-5">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                            </svg>
+                        </div>
+                        <h4>AI Gap Detection</h4>
+                        <p>LLM-powered analysis against regulatory standards</p>
+                    </div>
+                    <div class="feature-card animate-in delay-6">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <h4>Risk Prioritization</h4>
+                        <p>Critical, High, Medium, Low severity scoring</p>
+                    </div>
+                    <div class="feature-card animate-in delay-7">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <h4>Evidence Checklists</h4>
+                        <p>Documents required for each identified gap</p>
+                    </div>
+                </div>
+                <span class="slide-number">05 / 11</span>
+            </div>
+
+            <!-- Slide 6: Demo Input -->
+            <div class="slide slide-content" data-slide="6">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Demonstration</h3>
+                        <h2>System Input</h2>
+                    </div>
+                </div>
+                <div class="demo-container animate-in delay-2">
+                    <div class="demo-placeholder">
+                        <span class="demo-badge">Live Demo</span>
+                        <span class="demo-label">Entity Profile • Compliance Indicators • Prior Findings</span>
+                    </div>
+                </div>
+                <span class="slide-number">06 / 11</span>
+            </div>
+
+            <!-- Slide 7: Demo Output -->
+            <div class="slide slide-content" data-slide="7">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Demonstration</h3>
+                        <h2>Assessment Results</h2>
+                    </div>
+                </div>
+                <div class="demo-container animate-in delay-2">
+                    <div class="demo-placeholder">
+                        <span class="demo-badge">Assessment Output</span>
+                        <span class="demo-label">Risk Summary • Compliance Heat Map • Recommendations</span>
+                    </div>
+                </div>
+                <span class="slide-number">07 / 11</span>
+            </div>
+
+            <!-- Slide 8: Technology Stack -->
+            <div class="slide slide-content" data-slide="8">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Technology</h3>
+                        <h2>Built With</h2>
+                    </div>
+                </div>
+                <div class="tech-grid">
+                    <div class="tech-card animate-in delay-2">
+                        <div class="tech-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                        </div>
+                        <h4>LangChain</h4>
+                        <p>AI Orchestration</p>
+                    </div>
+                    <div class="tech-card animate-in delay-3">
+                        <div class="tech-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                        </div>
+                        <h4>FAISS</h4>
+                        <p>Document Search</p>
+                    </div>
+                    <div class="tech-card animate-in delay-4">
+                        <div class="tech-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                        </div>
+                        <h4>Gradio</h4>
+                        <p>Web Interface</p>
+                    </div>
+                    <div class="tech-card animate-in delay-5">
+                        <div class="tech-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                            </svg>
+                        </div>
+                        <h4>OpenAI</h4>
+                        <p>Language Model</p>
+                    </div>
+                </div>
+                <span class="slide-number">08 / 11</span>
+            </div>
+
+            <!-- Slide 9: Business Value -->
+            <div class="slide slide-content" data-slide="9">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Impact</h3>
+                        <h2>Business Value</h2>
+                    </div>
+                </div>
+                <div class="value-list">
+                    <div class="value-item animate-in delay-2">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                        </div>
+                        <div class="value-content">
+                            <h4>70% Faster Preparation</h4>
+                            <p>Dramatically reduce time spent on manual compliance reviews</p>
+                        </div>
+                    </div>
+                    <div class="value-item animate-in delay-3">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <div class="value-content">
+                            <h4>Consistent Assessment</h4>
+                            <p>Standardized evaluation criteria across all reviews</p>
+                        </div>
+                    </div>
+                    <div class="value-item animate-in delay-4">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="value-content">
+                            <h4>Early Gap Identification</h4>
+                            <p>Catch compliance issues before formal audits begin</p>
+                        </div>
+                    </div>
+                    <div class="value-item animate-in delay-5">
+                        <div class="value-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <line x1="19" y1="8" x2="19" y2="14"/>
+                                <line x1="22" y1="11" x2="16" y2="11"/>
+                            </svg>
+                        </div>
+                        <div class="value-content">
+                            <h4>Reduced Manual Effort</h4>
+                            <p>Free up auditors to focus on high-value analysis work</p>
+                        </div>
+                    </div>
+                </div>
+                <span class="slide-number">09 / 11</span>
+            </div>
+
+            <!-- Slide 10: Future Enhancements -->
+            <div class="slide slide-content" data-slide="10">
+                <div class="slide-header animate-in delay-1">
+                    <div class="header-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>Roadmap</h3>
+                        <h2>Future Enhancements</h2>
+                    </div>
+                </div>
+                <div class="future-grid">
+                    <div class="future-card animate-in delay-2">
+                        <span class="future-number">1</span>
+                        <div>
+                            <h4>Multi-Entity Comparison</h4>
+                            <p>Compare compliance status across multiple organizations simultaneously</p>
+                        </div>
+                    </div>
+                    <div class="future-card animate-in delay-3">
+                        <span class="future-number">2</span>
+                        <div>
+                            <h4>Historical Trend Analysis</h4>
+                            <p>Track compliance improvements over time with visual dashboards</p>
+                        </div>
+                    </div>
+                    <div class="future-card animate-in delay-4">
+                        <span class="future-number">3</span>
+                        <div>
+                            <h4>Audit System Integration</h4>
+                            <p>Connect with existing audit management platforms and workflows</p>
+                        </div>
+                    </div>
+                    <div class="future-card animate-in delay-5">
+                        <span class="future-number">4</span>
+                        <div>
+                            <h4>Automated Evidence Collection</h4>
+                            <p>Intelligent document gathering from connected data sources</p>
+                        </div>
+                    </div>
+                </div>
+                <span class="slide-number">10 / 11</span>
+            </div>
+
+            <!-- Slide 11: Thank You -->
+            <div class="slide slide-thanks" data-slide="11">
+                <h1 class="animate-in delay-1">Thank You</h1>
+                <p class="subtitle animate-in delay-2">Questions?</p>
+                <div class="contact-info animate-in delay-3">
+                    <div class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span>Abdulla Ahmed Alaydaroos</span>
+                    </div>
+                    <div class="contact-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                        </svg>
+                        <span>GitHub Repository</span>
+                    </div>
+                </div>
+                <span class="slide-number">11 / 11</span>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" aria-label="Previous slide">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+        </button>
+        <span class="slide-counter" id="slideCounter">1 / 11</span>
+        <button class="nav-btn" id="nextBtn" aria-label="Next slide">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        let currentSlide = 1;
+
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const slideCounter = document.getElementById('slideCounter');
+        const progressBar = document.getElementById('progressBar');
+
+        function updateSlide(n) {
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+                // Reset animations
+                slide.querySelectorAll('.animate-in').forEach(el => {
+                    el.style.animation = 'none';
+                    el.offsetHeight; // Trigger reflow
+                    el.style.animation = '';
+                });
+            });
+
+            currentSlide = n;
+            if (currentSlide > totalSlides) currentSlide = totalSlides;
+            if (currentSlide < 1) currentSlide = 1;
+
+            slides[currentSlide - 1].classList.add('active');
+            slideCounter.textContent = `${currentSlide} / ${totalSlides}`;
+
+            // Update progress bar
+            const progress = (currentSlide / totalSlides) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            // Update button states
+            prevBtn.disabled = currentSlide === 1;
+            nextBtn.disabled = currentSlide === totalSlides;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                updateSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                updateSlide(currentSlide - 1);
+            }
+        }
+
+        // Event listeners
+        nextBtn.addEventListener('click', nextSlide);
+        prevBtn.addEventListener('click', prevSlide);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                updateSlide(1);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                updateSlide(totalSlides);
+            }
+        });
+
+        // Click on slide to advance
+        document.querySelector('.slide-container').addEventListener('click', (e) => {
+            if (!e.target.closest('.nav-controls') && !e.target.closest('button')) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                if (x > rect.width / 2) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+            }
+        });
+
+        // Initialize
+        updateSlide(1);
+    </script>
+</body>
+</html>
